@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { RpaUser } from '@/types';
 import {
@@ -272,7 +273,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Retailer Coverage Details', M, 12.5);
+      pdf.text('Retailer Performance Details', M, 12.5);
       pdf.setFontSize(8.5);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
@@ -427,7 +428,11 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
         {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
-          <div key={card.label} className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div
+            key={card.label}
+            className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
+            style={{ borderLeftColor: card.color }}
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
             <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
             {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
@@ -529,7 +534,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
           <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#21264E]">Retailer Coverage Details</h2>
+                <h2 className="text-lg font-semibold text-[#21264E]">Retailer Performance Details</h2>
                 <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -549,19 +554,21 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={handleExportExcel}
-                    disabled={exportingExcel || filteredRetailerRows.length === 0}
-                    className="rounded-xl bg-[#245bc1] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1c4fa6] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    onClick={handleExportPdf}
+                    disabled={exportingPdf || filteredRetailerRows.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#F04438] text-white hover:bg-[#d93a30] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {exportingExcel ? 'Exporting...' : 'Export Excel'}
+                    <FileDown size={16} />
+                    {exportingPdf ? 'Exporting...' : 'PDF - Adobe Acrobat'}
                   </button>
                   <button
                     type="button"
-                    onClick={handleExportPdf}
-                    disabled={exportingPdf || filteredRetailerRows.length === 0}
-                    className="rounded-xl bg-[#0f766e] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d6a60] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    onClick={handleExportExcel}
+                    disabled={exportingExcel || filteredRetailerRows.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#16A34A] text-white hover:bg-[#12843d] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {exportingPdf ? 'Exporting...' : 'Export PDF'}
+                    <FileSpreadsheet size={16} />
+                    {exportingExcel ? 'Exporting...' : 'Excel - MS Excel'}
                   </button>
                 </div>
               </div>
@@ -609,7 +616,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   ) : (
                     <tr>
                       <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-sm text-slate-500">
-                        No retailer coverage details found for this zone.
+                        No retailer details found for this zone.
                       </td>
                     </tr>
                   )}
