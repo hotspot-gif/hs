@@ -119,6 +119,10 @@ export default function Dashboard() {
       setIsdmBranch(b);
       setIsdmZone(z);
       setIsdmRegion(r);
+
+      setPerfBranch(b);
+      setPerfZone(z);
+      setPerfRegion(r);
     };
 
     if (assignedZone && assignedBranch) {
@@ -145,6 +149,79 @@ export default function Dashboard() {
         apply(String(row.branch || ''), String(row.zone || legacyZone), String(row.region || '').toUpperCase());
       });
   }, [user]);
+
+  // Fetch performance report branches based on region
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('zone_coverage_summary')
+      .select('branch, region')
+      .limit(5000)
+      .then(({ data, error }: { data: any; error: any }) => {
+        if (error) {
+          console.error('Error fetching performance branches:', error);
+          return;
+        }
+        if (!data) return;
+
+        const uniqueBranches = [...new Set(data.map((row: any) => row.branch).filter(Boolean))] as string[];
+        let availableBranches = uniqueBranches;
+
+        if (user.role === 'ZONE-MANAGER') {
+          const b = normalizeBranch(user.branches?.[0] || '');
+          availableBranches = b ? [b] : [];
+        } else if (!['HS-ADMIN', 'COUNTRY-MANAGER', 'UK-ADMIN'].includes(user.role)) {
+          const userBranches = (user.branches || []).map(normalizeBranch);
+          availableBranches = uniqueBranches.filter((b: string) => userBranches.includes(normalizeBranch(b)));
+        }
+
+        if (perfRegion === 'NORTH') {
+          availableBranches = availableBranches.filter(b => NORTH_REGION.includes(normalizeBranch(b)));
+        } else if (perfRegion === 'SOUTH') {
+          availableBranches = availableBranches.filter(b => SOUTH_REGION.includes(normalizeBranch(b)));
+        }
+
+        setPerfBranches(availableBranches);
+        if (availableBranches.length > 0 && !perfBranch) {
+          setPerfBranch(availableBranches[0]);
+        }
+      });
+  }, [user, perfRegion, perfBranch]);
+
+  // Fetch performance report zones based on branch
+  useEffect(() => {
+    if (!perfBranch) {
+      setPerfZones([]);
+      setPerfZone('');
+      return;
+    }
+
+    if (user?.role === 'ZONE-MANAGER') {
+      const z = String(user.zone || '').trim();
+      setPerfZones(z ? [z] : []);
+      setPerfZone(z);
+      return;
+    }
+
+    supabase
+      .from('zone_coverage_summary')
+      .select('zone')
+      .eq('branch', perfBranch)
+      .limit(5000)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching performance zones:', error);
+          return;
+        }
+        if (!data) return;
+
+        const uniqueZones = [...new Set(data.map((row: any) => row.zone).filter(Boolean))] as string[];
+        setPerfZones(uniqueZones);
+        if (uniqueZones.length > 0 && !uniqueZones.includes(perfZone)) {
+          setPerfZone('');
+        }
+      });
+  }, [perfBranch, user, perfZone]);
 
   // Determine available branches based on role
   useEffect(() => {
