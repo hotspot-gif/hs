@@ -30,18 +30,61 @@ type PriorityLevel = {
   name: string;
   color: string;
   description: string;
+  timeline: string;
 };
 
 type PriorityLevelData = PriorityLevel & { value: number };
 
 const PRIORITY_LEVELS: PriorityLevel[] = [
-  { key: 'p1_count', name: 'P1 - CRITICAL LOSS', color: '#D32F2F', description: 'High performer gone inactive. Escalate to Zone Manager immediately.' },
-  { key: 'p2_count', name: 'P2 - DORMANT', color: '#FF3B30', description: 'Zero activity for 4 months. Immediate field visit required.' },
-  { key: 'p3_count', name: 'P3 - CHURNED', color: '#FF6B35', description: 'Was active, now inactive in MTD. Schedule reactivation visit.' },
-  { key: 'p4_count', name: 'P4 - SHARP DECLINE', color: '#FF9800', description: 'Active but far below average. Urgent performance push needed.' },
-  { key: 'p5_count', name: 'P5 - SPORADIC', color: '#FBC02D', description: 'Irregular low activity. Needs engagement plan.' },
-  { key: 'p6_count', name: 'P6 - BELOW AVERAGE', color: '#7CB342', description: 'Active but declining. Monitor and improve performance.' },
-  { key: 'p7_count', name: 'P7 - ACTIVE', color: '#00C853', description: 'On track or above target. Maintain and grow.' },
+  {
+    key: 'p1_count',
+    name: 'P1 - CRITICAL LOSS',
+    color: '#D32F2F',
+    description: 'Immediate escalation to Zone Manager. Manager must visit personally. Understand the reason for inactivity (competition, technical issues, closure).',
+    timeline: 'Within 24 hours',
+  },
+  {
+    key: 'p2_count',
+    name: 'P2 - DORMANT',
+    color: '#FF3B30',
+    description: 'Field visit mandatory. Check if the store is still open and operational. If closed, update the database. If open, reactivate with training and promotional materials.',
+    timeline: 'Within 48 hours',
+  },
+  {
+    key: 'p3_count',
+    name: 'P3 - CHURNED',
+    color: '#FF6B35',
+    description: 'Reactivation call followed by a visit. Offer incentives or special promotions to stimulate sales.',
+    timeline: 'Within 1 week',
+  },
+  {
+    key: 'p4_count',
+    name: 'P4 - SHARP DECLINE',
+    color: '#FF9800',
+    description: 'Urgent push. Discuss incentive schemes, check product availability, provide local marketing support.',
+    timeline: 'Within 1 week',
+  },
+  {
+    key: 'p5_count',
+    name: 'P5 - SPORADIC',
+    color: '#FBC02D',
+    description: 'Engagement plan. Provide product training, accompaniment, POP materials, and schedule regular visits.',
+    timeline: 'Within 2 weeks',
+  },
+  {
+    key: 'p6_count',
+    name: 'P6 - BELOW AVERAGE',
+    color: '#7CB342',
+    description: 'Monitoring and support. Push to achieve monthly target with weekly follow-up calls.',
+    timeline: 'Continuous monitoring',
+  },
+  {
+    key: 'p7_count',
+    name: 'P7 - ACTIVE',
+    color: '#00C853',
+    description: 'Maintain and grow. Propose upselling opportunities and reward performance with recognition.',
+    timeline: 'Monthly review',
+  },
 ];
 
 type MonthInfo = {
@@ -672,6 +715,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                     <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
                   </div>
                   <p className="mt-2 text-sm text-slate-600">{level.description}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{level.timeline}</p>
                 </div>
               ))}
             </div>
