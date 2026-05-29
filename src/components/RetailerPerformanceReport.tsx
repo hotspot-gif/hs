@@ -218,7 +218,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         filteredRetailerRows.map((row: Record<string, unknown>) => ({
           retailer_id: row['retailer_id'] ?? row['id'] ?? '',
           ...Object.fromEntries(monthInfo.map((entry: MonthInfo) => [entry.key, fieldValue(row, entry.aliases)])),
-          avg_mtd: fieldValue(row, AVERAGE_MTD_ALIASES),
+          avg_mtd: Math.round(fieldValue(row, AVERAGE_MTD_ALIASES)),
           p_level: getRowPriority(row),
         }))
       );
@@ -267,26 +267,17 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         pdf.text(`Page ${page} / ${pageCount}`, W - M, H - 6, { align: 'right' });
       };
 
-      autoTable(pdf, {
-        head: [['Key', 'Value']],
-        body: [
-          ['Exported At', nowStr],
-          ['Region', regionLbl],
-          ['Branch', branchLbl],
-          ['Zone', zoneLbl],
-          ['Priority Filter', filterLbl],
-          ['Total Rows', filteredRetailerRows.length],
-          ['Exported By', user?.full_name || user?.username || user?.email || ''],
-        ],
-        startY: 14,
-        theme: 'grid',
-        headStyles: { fillColor: [238, 242, 255], textColor: [33, 38, 78], halign: 'left', fontStyle: 'bold' },
-        bodyStyles: { textColor: [55, 65, 81], fontSize: 8, cellPadding: 2 },
-        styles: { font: 'helvetica' },
-        didDrawPage: footerHook,
-      });
+      pdf.setFillColor(33, 38, 78);
+      pdf.rect(0, 0, W, 18, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Retailer Coverage Details', M, 12.5);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
+      pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
 
-      pdf.addPage();
       autoTable(pdf, {
         head: [[
           'Retailer ID',
@@ -297,24 +288,25 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         body: filteredRetailerRows.map((row: Record<string, unknown>) => [
           String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? ''),
           ...monthInfo.map((entry: MonthInfo) => fieldValue(row, entry.aliases).toLocaleString()),
-          fieldValue(row, AVERAGE_MTD_ALIASES).toLocaleString(),
+          Math.round(fieldValue(row, AVERAGE_MTD_ALIASES)).toLocaleString(),
           getRowPriority(row),
         ]),
-        startY: 14,
+        startY: 24,
         theme: 'grid',
-        headStyles: { fillColor: [238, 242, 255], textColor: [33, 38, 78], fontStyle: 'bold' },
-        bodyStyles: { textColor: [55, 65, 81], fontSize: 7, cellPadding: 2 },
-        styles: { font: 'helvetica' },
+        headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold' },
+        bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [250, 248, 245] },
+        styles: { font: 'helvetica', overflow: 'linebreak' },
+        tableWidth: 'auto',
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 24 },
-          2: { cellWidth: 24 },
-          3: { cellWidth: 24 },
-          4: { cellWidth: 24 },
-          5: { cellWidth: 24 },
-          6: { cellWidth: 24 },
-          7: { cellWidth: 40 },
+          0: { cellWidth: 55 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 30 },
+          6: { cellWidth: 42 },
         },
       });
 
@@ -344,6 +336,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     return previous.length > 0 ? previous.reduce((sum: number, value: number) => sum + value, 0) / previous.length : 0;
   }, [trendData]);
   const avgMtd = useMemo(() => currentMtd - last3Average, [currentMtd, last3Average]);
+  const roundedAvgMtd = useMemo(() => Math.round(avgMtd), [avgMtd]);
 
   const priorityData = useMemo<PriorityLevelData[]>(
     () => PRIORITY_LEVELS.map((level: PriorityLevel) => ({
@@ -375,7 +368,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     },
     {
       label: 'MTD vs 3-Month Avg',
-      value: avgMtd,
+      value: roundedAvgMtd,
       color: avgMtd < 0 ? '#D32F2F' : '#00C853',
       suffix: avgMtd < 0 ? 'below avg' : 'above avg',
     },
@@ -571,7 +564,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   {filteredRetailerRows.length > 0 ? (
                     filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
                       const priorityValue = getRowPriority(row);
-                      const averageMtd = fieldValue(row, AVERAGE_MTD_ALIASES);
+                      const averageMtd = Math.round(fieldValue(row, AVERAGE_MTD_ALIASES));
 
                       return (
                         <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50">
