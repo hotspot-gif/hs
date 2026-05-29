@@ -457,6 +457,24 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             </ResponsiveContainer>
           </div>
         </section>
+
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
+            <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
+          </div>
+          <div className="h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       </div>
 
       <div className={`grid gap-4 ${isZoneSelected ? 'xl:grid-cols-[1fr_2fr]' : 'xl:grid-cols-[2fr_1fr]'}`}>
@@ -623,27 +641,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         )}
       </div>
 
-      {isZoneSelected && (
-        <div className="grid gap-4">
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
-              <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
-            </div>
-            <div className="h-[340px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                  <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                  <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
