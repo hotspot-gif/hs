@@ -65,25 +65,47 @@ const fieldValue = (row: Record<string, unknown>, aliases: string[]) => {
   return 0;
 };
 
+const PRIORITY_LEVEL_MAP: Record<string, string> = {
+  P1: '#D32F2F',
+  P2: '#FF3B30',
+  P3: '#FF6B35',
+  P4: '#FF9800',
+  P5: '#FBC02D',
+  P6: '#7CB342',
+  P7: '#00C853',
+};
+
+const getPriorityColor = (value?: string) => {
+  if (!value) return '#94A3B8';
+  const normalized = String(value).trim().toUpperCase();
+  const matched = /^P[1-7]/.exec(normalized)?.[0];
+  return matched ? PRIORITY_LEVEL_MAP[matched] : PRIORITY_LEVEL_MAP[normalized] ?? '#94A3B8';
+};
+
+const AVERAGE_MTD_ALIASES = ['avg_mtd', 'avg_mtd_value', 'avgmtd', 'average_mtd'];
+
 export default function RetailerPerformanceReport({ region, branch, zone }: RetailerPerformanceReportProps) {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [retailerRows, setRetailerRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const isZoneSelected = Boolean(zone);
 
   useEffect(() => {
     setLoading(true);
-    let query = supabase.from('zone_coverage_summary').select('*');
+    let summaryQuery = supabase.from('zone_coverage_summary').select('*');
 
     if (region && region !== 'ITALY') {
-      query = query.eq('region', region);
+      summaryQuery = summaryQuery.eq('region', region);
     }
     if (branch) {
-      query = query.eq('branch', branch);
+      summaryQuery = summaryQuery.eq('branch', branch);
     }
     if (zone) {
-      query = query.eq('zone', zone);
+      summaryQuery = summaryQuery.eq('zone', zone);
     }
 
-    query.limit(5000).then(({ data, error }) => {
+    summaryQuery.limit(5000).then(({ data, error }: { data: Record<string, unknown>[] | null; error: unknown }) => {
       if (error) {
         console.error('Retailer performance fetch error:', error);
         setRows([]);
@@ -92,10 +114,41 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
       }
       setLoading(false);
     });
-  }, [region, branch, zone]);
+
+    if (isZoneSelected) {
+      let retailerQuery = supabase.from('retailer_coverage').select('*');
+
+      if (region && region !== 'ITALY') {
+        retailerQuery = retailerQuery.eq('region', region);
+      }
+      if (branch) {
+        retailerQuery = retailerQuery.eq('branch', branch);
+      }
+      if (zone) {
+        retailerQuery = retailerQuery.eq('zone', zone);
+      }
+
+      retailerQuery.limit(5000).then(({ data, error }: { data: Record<string, unknown>[] | null; error: unknown }) => {
+        if (error) {
+          console.error('Retailer coverage fetch error:', error);
+          setRetailerRows([]);
+        } else {
+          setRetailerRows((data || []) as Record<string, unknown>[]);
+        }
+      });
+    } else {
+      setRetailerRows([]);
+    }
+  }, [region, branch, zone, isZoneSelected]);
 
   const currentMonthLabel = useMemo(() => getMonthLabel(0), []);
   const monthInfo = useMemo(() => MONTH_KEYS.map(entry => ({ ...entry, label: `${entry.label} (${getMonthLabel(entry.offset)})` })), []);
+  const retailerTableColumns = useMemo(
+    () => [
+      ...monthInfo.map(entry => ({ key: entry.key, label: entry.label, aliases: entry.aliases })),
+    ],
+    [monthInfo],
+  );
 
   const trendData = useMemo(() => {
     const totals = monthInfo.map(entry => ({
@@ -293,26 +346,85 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
           </div>
         </section>
 
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
-            <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
-          </div>
-          <div className="space-y-3">
-            {PRIORITY_LEVELS.map(level => (
-              <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
-                    <p className="font-semibold text-[#21264E]">{level.name}</p>
+        {isZoneSelected ? (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">Retailer Coverage Details</h2>
+              <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Retailer ID</th>
+                    {retailerTableColumns.map(column => (
+                      <th key={column.key} className="px-4 py-3 font-semibold">{column.label}</th>
+                    ))}
+                    <th className="px-4 py-3 font-semibold">Avg MTD</th>
+                    <th className="px-4 py-3 font-semibold">Priority Level</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {retailerRows.length > 0 ? (
+                    retailerRows.map((row, index) => {
+                      const priorityValue = String(row['p_level'] ?? row['priority_level'] ?? row['priority'] ?? row['P_LEVEL'] ?? '').trim();
+                      const averageMtd = fieldValue(row, AVERAGE_MTD_ALIASES);
+
+                      return (
+                        <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50">
+                          <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                            {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
+                          </td>
+                          {retailerTableColumns.map(column => (
+                            <td key={column.key} className="px-4 py-3 text-slate-700">
+                              {fieldValue(row, column.aliases).toLocaleString()}
+                            </td>
+                          ))}
+                          <td className="px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white"
+                              style={{ backgroundColor: getPriorityColor(priorityValue) }}
+                            >
+                              {priorityValue || 'Unknown'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-sm text-slate-500">
+                        No retailer coverage details found for this zone.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
+              <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
+            </div>
+            <div className="space-y-3">
+              {PRIORITY_LEVELS.map(level => (
+                <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
+                      <p className="font-semibold text-[#21264E]">{level.name}</p>
+                    </div>
+                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
                   </div>
-                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
+                  <p className="mt-2 text-sm text-slate-600">{level.description}</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">{level.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
