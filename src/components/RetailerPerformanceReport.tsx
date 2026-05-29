@@ -300,6 +300,25 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         styles: { font: 'helvetica', overflow: 'linebreak' },
         tableWidth: 'auto',
         didDrawPage: footerHook,
+        didParseCell: (hook: any) => {
+          if (hook.section !== 'body') return;
+          const priorityColIndex = 1 + monthInfo.length + 1; // RetailerID + months + Avg MTD => priority column
+          if (hook.column.index === priorityColIndex) {
+            const raw = String(hook.cell.raw || '').trim();
+            const hex = getPriorityColor(raw) || '#94A3B8';
+            const hexToRgb = (h: string) => {
+              const s = (h || '#94A3B8').replace('#', '');
+              const r = parseInt(s.substring(0, 2), 16) || 148;
+              const g = parseInt(s.substring(2, 4), 16) || 163;
+              const b = parseInt(s.substring(4, 6), 16) || 184;
+              return [r, g, b];
+            };
+            const rgb = hexToRgb(hex);
+            hook.cell.styles.fillColor = rgb;
+            hook.cell.styles.textColor = [255, 255, 255];
+            hook.cell.styles.fontStyle = 'bold';
+          }
+        },
         columnStyles: {
           0: { cellWidth: 55 },
           1: { cellWidth: 30 },
