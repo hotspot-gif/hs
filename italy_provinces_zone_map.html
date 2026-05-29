@@ -1,0 +1,334 @@
+
+<div style="padding: 1rem 0; font-family: var(--font-sans);">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+    <div>
+      <div style="font-size:18px; font-weight:500; color:var(--color-text-primary);">Territory coverage map</div>
+      <div style="font-size:13px; color:var(--color-text-secondary); margin-top:2px;">Provinces coloured by zone — hover for details</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="branch-filters"></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 260px; gap:16px; align-items:start;">
+    <div id="map-container" style="border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); overflow:hidden; background:var(--color-background-secondary); position:relative;">
+      <div id="map" style="width:100%;"></div>
+      <div id="tooltip" style="display:none; position:absolute; pointer-events:none; background:var(--color-background-primary); border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); padding:8px 12px; font-size:13px; max-width:180px; z-index:10;"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div id="legend-container"></div>
+      <div id="stats-panel" style="margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const PROVINCES = [
+  {code:"BA",zone:"HS BARI ZONE 1",branch:"LMIT-HS-BARI",name:"Bari"},
+  {code:"MT",zone:"HS BARI ZONE 1",branch:"LMIT-HS-BARI",name:"Matera"},
+  {code:"BT",zone:"HS BARI ZONE 2",branch:"LMIT-HS-BARI",name:"Barletta-Andria-Trani"},
+  {code:"FG",zone:"HS BARI ZONE 2",branch:"LMIT-HS-BARI",name:"Foggia"},
+  {code:"BR",zone:"HS BARI ZONE 3",branch:"LMIT-HS-BARI",name:"Brindisi"},
+  {code:"LE",zone:"HS BARI ZONE 3",branch:"LMIT-HS-BARI",name:"Lecce"},
+  {code:"TA",zone:"HS BARI ZONE 3",branch:"LMIT-HS-BARI",name:"Taranto"},
+  {code:"FE",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Ferrara"},
+  {code:"FC",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Forlì-Cesena"},
+  {code:"RA",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Ravenna"},
+  {code:"RE",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Reggio Emilia"},
+  {code:"BO",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Bologna"},
+  {code:"MO",zone:"HS BOLOGNA ZONE 1",branch:"LMIT-HS-BOLOGNA",name:"Modena"},
+  {code:"RN",zone:"HS BOLOGNA ZONE 2",branch:"LMIT-HS-BOLOGNA",name:"Rimini"},
+  {code:"AN",zone:"HS BOLOGNA ZONE 2",branch:"LMIT-HS-BOLOGNA",name:"Ancona"},
+  {code:"FM",zone:"HS BOLOGNA ZONE 2",branch:"LMIT-HS-BOLOGNA",name:"Fermo"},
+  {code:"MC",zone:"HS BOLOGNA ZONE 2",branch:"LMIT-HS-BOLOGNA",name:"Macerata"},
+  {code:"PU",zone:"HS BOLOGNA ZONE 2",branch:"LMIT-HS-BOLOGNA",name:"Pesaro and Urbino"},
+  {code:"FI",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Florence"},
+  {code:"LI",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Livorno"},
+  {code:"LU",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Lucca"},
+  {code:"MS",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Massa-Carrara"},
+  {code:"PI",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Pisa"},
+  {code:"PT",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Pistoia"},
+  {code:"PO",zone:"HS BOLOGNA ZONE 3",branch:"LMIT-HS-BOLOGNA",name:"Prato"},
+  {code:"MI",zone:"HS MILANO ZONE 1",branch:"LMIT-HS-MILAN",name:"Milan"},
+  {code:"CO",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Como"},
+  {code:"LC",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Lecco"},
+  {code:"MB",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Monza-Brianza"},
+  {code:"VA",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Varese"},
+  {code:"SO",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Sondrio"},
+  {code:"AL",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Alessandria"},
+  {code:"NO",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Novara"},
+  {code:"VC",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Vercelli"},
+  {code:"VB",zone:"HS MILANO ZONE 2",branch:"LMIT-HS-MILAN",name:"Verbano-Cusio-Ossola"},
+  {code:"BG",zone:"HS MILANO ZONE 3",branch:"LMIT-HS-MILAN",name:"Bergamo"},
+  {code:"BS",zone:"HS MILANO ZONE 3",branch:"LMIT-HS-MILAN",name:"Brescia"},
+  {code:"PR",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Parma"},
+  {code:"PC",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Piacenza"},
+  {code:"CR",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Cremona"},
+  {code:"LO",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Lodi"},
+  {code:"MN",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Mantua"},
+  {code:"PV",zone:"HS MILANO ZONE 4",branch:"LMIT-HS-MILAN",name:"Pavia"},
+  {code:"NA",zone:"HS NAPOLI ZONE 1",branch:"LMIT-HS-NAPLES",name:"Naples"},
+  {code:"CE",zone:"HS NAPOLI ZONE 2",branch:"LMIT-HS-NAPLES",name:"Caserta"},
+  {code:"SA",zone:"HS NAPOLI ZONE 3",branch:"LMIT-HS-NAPLES",name:"Salerno"},
+  {code:"AV",zone:"HS NAPOLI ZONE 4",branch:"LMIT-HS-NAPLES",name:"Avellino"},
+  {code:"BN",zone:"HS NAPOLI ZONE 4",branch:"LMIT-HS-NAPLES",name:"Benevento"},
+  {code:"PZ",zone:"HS NAPOLI ZONE 5",branch:"LMIT-HS-NAPLES",name:"Potenza"},
+  {code:"CZ",zone:"HS NAPOLI ZONE 6",branch:"LMIT-HS-NAPLES",name:"Catanzaro"},
+  {code:"CS",zone:"HS NAPOLI ZONE 6",branch:"LMIT-HS-NAPLES",name:"Cosenza"},
+  {code:"KR",zone:"HS NAPOLI ZONE 6",branch:"LMIT-HS-NAPLES",name:"Crotone"},
+  {code:"RC",zone:"HS NAPOLI ZONE 7",branch:"LMIT-HS-NAPLES",name:"Reggio Calabria"},
+  {code:"VV",zone:"HS NAPOLI ZONE 7",branch:"LMIT-HS-NAPLES",name:"Vibo Valentia"},
+  {code:"GO",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Gorizia"},
+  {code:"PN",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Pordenone"},
+  {code:"TS",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Trieste"},
+  {code:"UD",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Udine"},
+  {code:"PD",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Padua"},
+  {code:"RO",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Rovigo"},
+  {code:"TV",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Treviso"},
+  {code:"VE",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Venice"},
+  {code:"VI",zone:"HS PADOVA ZONE 1",branch:"LMIT-HS-PADOVA",name:"Vicenza"},
+  {code:"BZ",zone:"HS PADOVA ZONE 2",branch:"LMIT-HS-PADOVA",name:"South Tyrol"},
+  {code:"TN",zone:"HS PADOVA ZONE 2",branch:"LMIT-HS-PADOVA",name:"Trento"},
+  {code:"BL",zone:"HS PADOVA ZONE 2",branch:"LMIT-HS-PADOVA",name:"Belluno"},
+  {code:"VR",zone:"HS PADOVA ZONE 2",branch:"LMIT-HS-PADOVA",name:"Verona"},
+  {code:"PA",zone:"HS PALERMO ZONE 1",branch:"LMIT-HS-PALERMO",name:"Palermo"},
+  {code:"TP",zone:"HS PALERMO ZONE 1",branch:"LMIT-HS-PALERMO",name:"Trapani"},
+  {code:"AG",zone:"HS PALERMO ZONE 2",branch:"LMIT-HS-PALERMO",name:"Agrigento"},
+  {code:"CL",zone:"HS PALERMO ZONE 2",branch:"LMIT-HS-PALERMO",name:"Caltanissetta"},
+  {code:"CT",zone:"HS PALERMO ZONE 3",branch:"LMIT-HS-PALERMO",name:"Catania"},
+  {code:"EN",zone:"HS PALERMO ZONE 3",branch:"LMIT-HS-PALERMO",name:"Enna"},
+  {code:"ME",zone:"HS PALERMO ZONE 3",branch:"LMIT-HS-PALERMO",name:"Messina"},
+  {code:"RG",zone:"HS PALERMO ZONE 3",branch:"LMIT-HS-PALERMO",name:"Ragusa"},
+  {code:"SR",zone:"HS PALERMO ZONE 3",branch:"LMIT-HS-PALERMO",name:"Syracuse"},
+  {code:"RM",zone:"HS ROMA ZONE 1",branch:"LMIT-HS-ROME",name:"Rome"},
+  {code:"CA",zone:"HS ROMA ZONE 2",branch:"LMIT-HS-ROME",name:"Cagliari"},
+  {code:"NU",zone:"HS ROMA ZONE 2",branch:"LMIT-HS-ROME",name:"Nuoro"},
+  {code:"OR",zone:"HS ROMA ZONE 2",branch:"LMIT-HS-ROME",name:"Oristano"},
+  {code:"SS",zone:"HS ROMA ZONE 2",branch:"LMIT-HS-ROME",name:"Sassari"},
+  {code:"SU",zone:"HS ROMA ZONE 2",branch:"LMIT-HS-ROME",name:"Sud Sardegna"},
+  {code:"RI",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Rieti"},
+  {code:"VT",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Viterbo"},
+  {code:"SI",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Siena"},
+  {code:"AR",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Arezzo"},
+  {code:"GR",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Grosseto"},
+  {code:"PG",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Perugia"},
+  {code:"TR",zone:"HS ROMA ZONE 3",branch:"LMIT-HS-ROME",name:"Terni"},
+  {code:"FR",zone:"HS ROMA ZONE 4",branch:"LMIT-HS-ROME",name:"Frosinone"},
+  {code:"LT",zone:"HS ROMA ZONE 4",branch:"LMIT-HS-ROME",name:"Latina"},
+  {code:"CH",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Chieti"},
+  {code:"AQ",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"L'Aquila"},
+  {code:"PE",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Pescara"},
+  {code:"TE",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Teramo"},
+  {code:"AP",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Ascoli Piceno"},
+  {code:"CB",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Campobasso"},
+  {code:"IS",zone:"HS ROMA ZONE 5",branch:"LMIT-HS-ROME",name:"Isernia"},
+  {code:"TO",zone:"HS TORINO ZONE 1",branch:"LMIT-HS-TORINO",name:"Turin"},
+  {code:"AO",zone:"HS TORINO ZONE 2",branch:"LMIT-HS-TORINO",name:"Aosta"},
+  {code:"AT",zone:"HS TORINO ZONE 2",branch:"LMIT-HS-TORINO",name:"Asti"},
+  {code:"BI",zone:"HS TORINO ZONE 2",branch:"LMIT-HS-TORINO",name:"Biella"},
+  {code:"CN",zone:"HS TORINO ZONE 2",branch:"LMIT-HS-TORINO",name:"Cuneo"},
+  {code:"SV",zone:"HS TORINO ZONE 3",branch:"LMIT-HS-TORINO",name:"Savona"},
+  {code:"GE",zone:"HS TORINO ZONE 3",branch:"LMIT-HS-TORINO",name:"Genoa"},
+  {code:"IM",zone:"HS TORINO ZONE 3",branch:"LMIT-HS-TORINO",name:"Imperia"},
+  {code:"SP",zone:"HS TORINO ZONE 3",branch:"LMIT-HS-TORINO",name:"La Spezia"},
+];
+
+const byCode = {};
+PROVINCES.forEach(p => { byCode[p.code] = p; });
+
+const BRANCHES = [...new Set(PROVINCES.map(p => p.branch))].sort();
+const ZONES = [...new Set(PROVINCES.map(p => p.zone))].sort();
+
+const BRANCH_PALETTE = {
+  "LMIT-HS-BARI":    { base:"#006AE0", shades:["#cce0fb","#99c1f7","#66a3f3","#3384ee","#006AE0","#0054b3","#003f87"] },
+  "LMIT-HS-BOLOGNA": { base:"#08DC7D", shades:["#cef9e7","#9ef3d0","#6dedb9","#3de6a2","#08DC7D","#06b064","#04844b"] },
+  "LMIT-HS-MILAN":   { base:"#FFD54F", shades:["#fff8dc","#fff0b3","#ffe98a","#ffe161","#FFD54F","#ccaa3f","#997f2f"] },
+  "LMIT-HS-NAPLES":  { base:"#F04438", shades:["#fde8e7","#fbc4c1","#f9a09b","#f77b75","#F04438","#c0362d","#902921"] },
+  "LMIT-HS-PADOVA":  { base:"#7C3AED", shades:["#ede9fb","#cfc0f6","#b197f1","#936eec","#7C3AED","#6230bc","#49248d"] },
+  "LMIT-HS-PALERMO": { base:"#F97316", shades:["#feeadb","#fcd0b0","#fbb685","#f99c5a","#F97316","#c75c12","#95450d"] },
+  "LMIT-HS-ROME":    { base:"#21264E", shades:["#d4d5df","#a8abbe","#7d809e","#51567d","#21264E","#1a1e3e","#13172f"] },
+  "LMIT-HS-TORINO":  { base:"#0EA5E9", shades:["#d0edfa","#a1daf6","#72c8f2","#43b5ee","#0EA5E9","#0b84ba","#08638c"] },
+};
+
+const BRANCH_LABEL = {
+  "LMIT-HS-BARI":    "Bari",
+  "LMIT-HS-BOLOGNA": "Bologna",
+  "LMIT-HS-MILAN":   "Milan",
+  "LMIT-HS-NAPLES":  "Naples",
+  "LMIT-HS-PADOVA":  "Padova",
+  "LMIT-HS-PALERMO": "Palermo",
+  "LMIT-HS-ROME":    "Rome",
+  "LMIT-HS-TORINO":  "Torino",
+};
+
+function getZoneShade(branch, zone) {
+  const pal = BRANCH_PALETTE[branch];
+  if (!pal) return "#aaa";
+  const zonesForBranch = [...new Set(
+    PROVINCES.filter(p => p.branch === branch).map(p => p.zone)
+  )].sort();
+  const idx = zonesForBranch.indexOf(zone);
+  return pal.shades[Math.min(idx + 1, pal.shades.length - 1)];
+}
+
+let activeBranch = null;
+let hoveredCode = null;
+
+function getColor(code) {
+  const p = byCode[code];
+  if (!p) return "#e5e7eb";
+  if (activeBranch && p.branch !== activeBranch) return "#e5e7eb";
+  return getZoneShade(p.branch, p.zone);
+}
+
+function getStroke(code) {
+  const p = byCode[code];
+  if (!p) return "#ccc";
+  if (activeBranch && p.branch !== activeBranch) return "#d1d5db";
+  return "#fff";
+}
+
+let svgEl, pathSelection;
+
+function renderLegend() {
+  const container = document.getElementById("legend-container");
+  const statsPanel = document.getElementById("stats-panel");
+  
+  const branchesToShow = activeBranch ? [activeBranch] : BRANCHES;
+  
+  let html = "";
+  branchesToShow.forEach(branch => {
+    const pal = BRANCH_PALETTE[branch];
+    const zones = [...new Set(PROVINCES.filter(p => p.branch === branch).map(p => p.zone))].sort();
+    const count = PROVINCES.filter(p => p.branch === branch).length;
+    html += `<div style="background:var(--color-background-primary); border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); padding:10px 12px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <div style="width:10px; height:10px; border-radius:2px; background:${pal.base};"></div>
+        <span style="font-size:13px; font-weight:500; color:var(--color-text-primary);">${BRANCH_LABEL[branch]}</span>
+        <span style="font-size:11px; color:var(--color-text-secondary); margin-left:auto;">${count} prov.</span>
+      </div>`;
+    zones.forEach((zone, idx) => {
+      const zoneCount = PROVINCES.filter(p => p.zone === zone).length;
+      const shade = pal.shades[Math.min(idx + 1, pal.shades.length - 1)];
+      const shortZone = zone.replace(/^HS /, "").replace(/ ZONE /, " Z");
+      html += `<div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+        <div style="width:8px; height:8px; border-radius:1px; background:${shade}; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:var(--color-text-secondary); flex:1;">${shortZone}</span>
+        <span style="font-size:11px; color:var(--color-text-tertiary);">${zoneCount}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  container.innerHTML = html;
+
+  const totalProv = activeBranch ? PROVINCES.filter(p => p.branch === activeBranch).length : PROVINCES.length;
+  const totalZones = activeBranch 
+    ? [...new Set(PROVINCES.filter(p => p.branch === activeBranch).map(p => p.zone))].length 
+    : ZONES.length;
+  statsPanel.innerHTML = `
+    <div style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px;">
+      <div style="font-size:11px; color:var(--color-text-secondary); margin-bottom:4px;">Coverage summary</div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+        <span style="font-size:12px; color:var(--color-text-secondary);">Provinces</span>
+        <span style="font-size:12px; font-weight:500; color:var(--color-text-primary);">${totalProv}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+        <span style="font-size:12px; color:var(--color-text-secondary);">Zones</span>
+        <span style="font-size:12px; font-weight:500; color:var(--color-text-primary);">${totalZones}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span style="font-size:12px; color:var(--color-text-secondary);">Branches</span>
+        <span style="font-size:12px; font-weight:500; color:var(--color-text-primary);">${activeBranch ? 1 : BRANCHES.length}</span>
+      </div>
+    </div>`;
+}
+
+function renderFilters() {
+  const container = document.getElementById("branch-filters");
+  let html = `<button onclick="setFilter(null)" style="font-size:11px; padding:4px 10px; border-radius:99px; border:0.5px solid var(--color-border-${activeBranch === null ? 'primary' : 'tertiary'}); background:${activeBranch === null ? 'var(--color-background-secondary)' : 'transparent'}; color:var(--color-text-${activeBranch === null ? 'primary' : 'secondary'}); cursor:pointer;">All</button>`;
+  BRANCHES.forEach(b => {
+    const pal = BRANCH_PALETTE[b];
+    const isActive = activeBranch === b;
+    html += `<button onclick="setFilter('${b}')" style="font-size:11px; padding:4px 10px; border-radius:99px; border:0.5px solid ${isActive ? pal.base : 'var(--color-border-tertiary)'}; background:${isActive ? pal.base + '22' : 'transparent'}; color:${isActive ? pal.base : 'var(--color-text-secondary)'}; cursor:pointer;">${BRANCH_LABEL[b]}</button>`;
+  });
+  container.innerHTML = html;
+}
+
+function setFilter(branch) {
+  activeBranch = branch;
+  renderFilters();
+  renderLegend();
+  if (pathSelection) {
+    pathSelection.attr("fill", d => getColor(d.properties.prov_acr)).attr("stroke", d => getStroke(d.properties.prov_acr));
+  }
+}
+
+window.setFilter = setFilter;
+
+renderFilters();
+renderLegend();
+
+d3.json("https://cdn.jsdelivr.net/gh/openpolis/geojson-italy@master/topojson/limits_IT_provinces.topo.json").then(topo => {
+  const features = topojson.feature(topo, topo.objects.provinces).features;
+  const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  
+  const container = document.getElementById("map");
+  const width = container.offsetWidth || 500;
+  const height = width * 1.35;
+
+  const svg = d3.select("#map").append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("width", "100%")
+    .style("display","block");
+
+  svgEl = svg;
+
+  const projection = d3.geoMercator().fitSize([width, height], topojson.feature(topo, topo.objects.provinces));
+  const path = d3.geoPath(projection);
+  const tooltip = document.getElementById("tooltip");
+  const mapContainer = document.getElementById("map-container");
+
+  pathSelection = svg.selectAll("path")
+    .data(features)
+    .join("path")
+    .attr("d", path)
+    .attr("fill", d => getColor(d.properties.prov_acr))
+    .attr("stroke", d => getStroke(d.properties.prov_acr))
+    .attr("stroke-width", 0.5)
+    .style("cursor", "pointer")
+    .style("transition", "opacity 0.15s")
+    .on("mouseover", function(event, d) {
+      const code = d.properties.prov_acr;
+      const p = byCode[code];
+      d3.select(this).attr("stroke-width", 1.5).attr("opacity", 0.85);
+      if (p) {
+        tooltip.innerHTML = `
+          <div style="font-weight:500; font-size:13px; color:var(--color-text-primary); margin-bottom:2px;">${p.name} (${code})</div>
+          <div style="font-size:11px; color:var(--color-text-secondary);">${p.zone}</div>
+          <div style="font-size:11px; color:var(--color-text-secondary);">${BRANCH_LABEL[p.branch]}</div>`;
+        tooltip.style.display = "block";
+      }
+    })
+    .on("mousemove", function(event) {
+      const rect = mapContainer.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      tooltip.style.left = (x + 12) + "px";
+      tooltip.style.top = (y - 10) + "px";
+    })
+    .on("mouseleave", function() {
+      d3.select(this).attr("stroke-width", 0.5).attr("opacity", 1);
+      tooltip.style.display = "none";
+    })
+    .on("click", function(event, d) {
+      const code = d.properties.prov_acr;
+      const p = byCode[code];
+      if (p) setFilter(activeBranch === p.branch ? null : p.branch);
+    });
+
+}).catch(err => {
+  document.getElementById("map").innerHTML = `<div style="padding:2rem; color:var(--color-text-secondary); font-size:13px;">Failed to load map topology. Check network access.</div>`;
+  console.error(err);
+});
+</script>

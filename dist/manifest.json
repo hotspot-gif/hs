@@ -1,0 +1,23 @@
+{
+  "name": "Field IQ",
+  "short_name": "Field IQ",
+  "description": "Field IQ - Retail Coverage Management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#21264E",
+  "theme_color": "#21264E",
+  "icons": [
+    {
+      "src": "https://iili.io/BIcePJ2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://iili.io/BIcePJ2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
