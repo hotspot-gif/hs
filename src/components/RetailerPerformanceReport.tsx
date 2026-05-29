@@ -303,21 +303,33 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         didParseCell: (hook: any) => {
           if (hook.section !== 'body') return;
           const priorityColIndex = 1 + monthInfo.length + 1; // RetailerID + months + Avg MTD => priority column
-          if (hook.column.index === priorityColIndex) {
-            const raw = String(hook.cell.raw || '').trim();
-            const hex = getPriorityColor(raw) || '#94A3B8';
-            const hexToRgb = (h: string) => {
-              const s = (h || '#94A3B8').replace('#', '');
-              const r = parseInt(s.substring(0, 2), 16) || 148;
-              const g = parseInt(s.substring(2, 4), 16) || 163;
-              const b = parseInt(s.substring(4, 6), 16) || 184;
-              return [r, g, b];
-            };
-            const rgb = hexToRgb(hex);
-            hook.cell.styles.fillColor = rgb;
-            hook.cell.styles.textColor = [255, 255, 255];
-            hook.cell.styles.fontStyle = 'bold';
+          if (hook.column.index !== priorityColIndex) return;
+
+          const raw = String(hook.cell.raw || '').trim();
+          const up = raw.toUpperCase();
+
+          // Prefer direct P# match
+          const pm = up.match(/^P([1-7])/);
+          let hex = '#94A3B8';
+          if (pm) {
+            hex = PRIORITY_LEVEL_MAP[`P${pm[1]}`] || hex;
+          } else {
+            // fallback: check if the label contains known priority names
+            const found = PRIORITY_LEVELS.find(l => up.includes(l.name.toUpperCase()) || up.includes(l.key.toUpperCase()));
+            if (found) hex = found.color;
+            // numeric fallback like '4' -> P4
+            const nm = up.match(/^([1-7])$/);
+            if (nm) hex = PRIORITY_LEVEL_MAP[`P${nm[1]}`] || hex;
           }
+
+          const s = (hex || '#94A3B8').replace('#', '');
+          const r = Number.isNaN(parseInt(s.substring(0, 2), 16)) ? 148 : parseInt(s.substring(0, 2), 16);
+          const g = Number.isNaN(parseInt(s.substring(2, 4), 16)) ? 163 : parseInt(s.substring(2, 4), 16);
+          const b = Number.isNaN(parseInt(s.substring(4, 6), 16)) ? 184 : parseInt(s.substring(4, 6), 16);
+
+          hook.cell.styles.fillColor = [r, g, b];
+          hook.cell.styles.textColor = [255, 255, 255];
+          hook.cell.styles.fontStyle = 'bold';
         },
         columnStyles: {
           0: { cellWidth: 55 },
