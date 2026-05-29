@@ -459,8 +459,177 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </section>
       </div>
 
-      <div className="grid gap-4">
-        {isZoneSelected && (
+      {isZoneSelected && (
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-[#21264E]">Retailer Coverage Details</h2>
+              <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <label htmlFor="priority-filter" className="font-semibold text-slate-700">Filter:</label>
+                <select
+                  id="priority-filter"
+                  value={priorityFilter}
+                  onChange={(event) => setPriorityFilter(event.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
+                >
+                  {priorityFilterOptions.map((option: { value: string; label: string }) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  disabled={exportingExcel || filteredRetailerRows.length === 0}
+                  className="rounded-xl bg-[#245bc1] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1c4fa6] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                >
+                  {exportingExcel ? 'Exporting...' : 'Export Excel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={exportingPdf || filteredRetailerRows.length === 0}
+                  className="rounded-xl bg-[#0f766e] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d6a60] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                >
+                  {exportingPdf ? 'Exporting...' : 'Export PDF'}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Retailer ID</th>
+                  {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
+                    <th key={column.key} className="px-4 py-3 font-semibold">{column.label}</th>
+                  ))}
+                  <th className="px-4 py-3 font-semibold">Avg MTD</th>
+                  <th className="px-4 py-3 font-semibold">Priority Level</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredRetailerRows.length > 0 ? (
+                  filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
+                    const priorityValue = getRowPriority(row);
+                    const averageMtd = Math.round(fieldValue(row, AVERAGE_MTD_ALIASES));
+
+                    return (
+                      <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50">
+                        <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                          {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
+                        </td>
+                        {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
+                          <td key={column.key} className="px-4 py-3 text-slate-700">
+                            {fieldValue(row, column.aliases).toLocaleString()}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white"
+                            style={{ backgroundColor: getPriorityColor(priorityValue) }}
+                          >
+                            {priorityValue || 'Unknown'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-sm text-slate-500">
+                      No retailer coverage details found for this zone.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <div className={`grid gap-4 ${isZoneSelected ? 'xl:grid-cols-1' : 'xl:grid-cols-[2fr_1fr]'}`}>
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
+            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
+          </div>
+          <div className="relative h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={62}
+                  outerRadius={100}
+                  paddingAngle={2}
+                >
+                  {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => value.toLocaleString()} />
+              </PieChart>
+            </ResponsiveContainer>
+            {totalPriority > 0 && (
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
+                <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
+                <span className="text-xs text-slate-400">of priority retailers</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 grid gap-2">
+            {priorityData.map((item: PriorityLevelData) => (
+              <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
+                  <div>
+                    <p className="text-sm font-semibold text-[#21264E]">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.description}</p>
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {!isZoneSelected && (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
+              <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
+            </div>
+            <div className="space-y-3">
+              {PRIORITY_LEVELS.map((level: PriorityLevel) => (
+                <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
+                      <p className="font-semibold text-[#21264E]">{level.name}</p>
+                    </div>
+                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">{level.description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {isZoneSelected && (
+        <div className="grid gap-4">
           <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
@@ -478,170 +647,8 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               </ResponsiveContainer>
             </div>
           </section>
-        )}
-
-        {isZoneSelected && (
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-[#21264E]">Retailer Coverage Details</h2>
-                <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  <label htmlFor="priority-filter" className="font-semibold text-slate-700">Filter:</label>
-                  <select
-                    id="priority-filter"
-                    value={priorityFilter}
-                    onChange={(event) => setPriorityFilter(event.target.value)}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
-                  >
-                    {priorityFilterOptions.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleExportExcel}
-                    disabled={exportingExcel || filteredRetailerRows.length === 0}
-                    className="rounded-xl bg-[#245bc1] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1c4fa6] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                  >
-                    {exportingExcel ? 'Exporting...' : 'Export Excel'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportPdf}
-                    disabled={exportingPdf || filteredRetailerRows.length === 0}
-                    className="rounded-xl bg-[#0f766e] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d6a60] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                  >
-                    {exportingPdf ? 'Exporting...' : 'Export PDF'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Retailer ID</th>
-                    {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
-                      <th key={column.key} className="px-4 py-3 font-semibold">{column.label}</th>
-                    ))}
-                    <th className="px-4 py-3 font-semibold">Avg MTD</th>
-                    <th className="px-4 py-3 font-semibold">Priority Level</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredRetailerRows.length > 0 ? (
-                    filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
-                      const priorityValue = getRowPriority(row);
-                      const averageMtd = Math.round(fieldValue(row, AVERAGE_MTD_ALIASES));
-
-                      return (
-                        <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50">
-                          <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                            {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
-                          </td>
-                          {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
-                            <td key={column.key} className="px-4 py-3 text-slate-700">
-                              {fieldValue(row, column.aliases).toLocaleString()}
-                            </td>
-                          ))}
-                          <td className="px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white"
-                              style={{ backgroundColor: getPriorityColor(priorityValue) }}
-                            >
-                              {priorityValue || 'Unknown'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-sm text-slate-500">
-                        No retailer coverage details found for this zone.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
-            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-            <div className="relative h-[340px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={62}
-                    outerRadius={100}
-                    paddingAngle={2}
-                  >
-                    {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-4">
-              {totalPriority > 0 && (
-                <div className="rounded-3xl border border-[#E2E8F0] bg-[#f8fafc] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</p>
-                  <p className="mt-3 text-3xl font-bold text-[#00C853]">{p7Share}%</p>
-                  <p className="text-sm text-slate-500">of priority retailers</p>
-                </div>
-              )}
-              <div className="space-y-3">
-                {isZoneSelected ? (
-                  priorityData.map((item: PriorityLevelData) => (
-                    <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
-                        <div>
-                          <p className="text-sm font-semibold text-[#21264E]">{item.name}</p>
-                          <p className="text-xs text-slate-500">{item.description}</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="space-y-3">
-                    {PRIORITY_LEVELS.map((level: PriorityLevel) => (
-                      <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
-                            <p className="font-semibold text-[#21264E]">{level.name}</p>
-                          </div>
-                          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
-                        </div>
-                        <p className="mt-2 text-sm text-slate-600">{level.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
