@@ -189,7 +189,7 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
         {summaryCards.map(card => (
           <div key={card.label} className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
@@ -247,7 +247,7 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
             </ResponsiveContainer>
           </div>
           <div className="mt-4 grid gap-2">
-            {priorityData.slice(0, 5).map(item => (
+            {priorityData.map(item => (
               <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
                 <div className="flex items-center gap-3">
                   <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
