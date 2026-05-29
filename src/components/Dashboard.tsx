@@ -182,20 +182,11 @@ export default function Dashboard() {
         }
 
         setPerfBranches(availableBranches);
-        if (availableBranches.length > 0 && !perfBranch) {
-          setPerfBranch(availableBranches[0]);
-        }
       });
-  }, [user, perfRegion, perfBranch]);
+  }, [user, perfRegion]);
 
-  // Fetch performance report zones based on branch
+  // Fetch performance report zones based on branch or region
   useEffect(() => {
-    if (!perfBranch) {
-      setPerfZones([]);
-      setPerfZone('');
-      return;
-    }
-
     if (user?.role === 'ZONE-MANAGER') {
       const z = String(user.zone || '').trim();
       setPerfZones(z ? [z] : []);
@@ -203,25 +194,31 @@ export default function Dashboard() {
       return;
     }
 
-    supabase
+    let query = supabase
       .from('zone_coverage_summary')
       .select('zone')
-      .eq('branch', perfBranch)
-      .limit(5000)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error fetching performance zones:', error);
-          return;
-        }
-        if (!data) return;
+      .limit(5000);
 
-        const uniqueZones = [...new Set(data.map((row: any) => row.zone).filter(Boolean))] as string[];
-        setPerfZones(uniqueZones);
-        if (uniqueZones.length > 0 && !uniqueZones.includes(perfZone)) {
-          setPerfZone('');
-        }
-      });
-  }, [perfBranch, user, perfZone]);
+    if (perfBranch) {
+      query = query.eq('branch', perfBranch);
+    } else if (perfRegion && perfRegion !== 'ITALY') {
+      query = query.eq('region', perfRegion);
+    }
+
+    query.then(({ data, error }) => {
+      if (error) {
+        console.error('Error fetching performance zones:', error);
+        return;
+      }
+      if (!data) return;
+
+      const uniqueZones = [...new Set(data.map((row: any) => row.zone).filter(Boolean))] as string[];
+      setPerfZones(uniqueZones);
+      if (perfZone && !uniqueZones.includes(perfZone)) {
+        setPerfZone('');
+      }
+    });
+  }, [perfBranch, perfRegion, perfZone, user]);
 
   // Determine available branches based on role
   useEffect(() => {

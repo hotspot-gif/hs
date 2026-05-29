@@ -110,7 +110,7 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
     const previous = trendData.slice(0, 3).map(entry => entry.value);
     return previous.length > 0 ? previous.reduce((sum, value) => sum + value, 0) / previous.length : 0;
   }, [trendData]);
-  const avgMtd = useMemo(() => last3Average - currentMtd, [last3Average, currentMtd]);
+  const avgMtd = useMemo(() => currentMtd - last3Average, [currentMtd, last3Average]);
 
   const priorityData = useMemo(() => PRIORITY_LEVELS.map(level => ({
     ...level,
@@ -118,6 +118,10 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
   })), [rows]);
   const totalPriority = useMemo(() => priorityData.reduce((sum, item) => sum + item.value, 0), [priorityData]);
   const priorityVisible = priorityData.filter(item => item.value > 0);
+  const p7Share = useMemo(() => {
+    const p7Value = priorityData.find(item => item.key === 'p7_count')?.value ?? 0;
+    return totalPriority > 0 ? Math.round((p7Value / totalPriority) * 100) : 0;
+  }, [priorityData, totalPriority]);
 
   const summaryCards = [
     {
@@ -127,14 +131,14 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
     },
     {
       label: '3-Month Retailer Average',
-      value: last3Average,
+      value: Math.round(last3Average),
       color: '#08dc7d',
     },
     {
       label: 'MTD vs 3-Month Avg',
       value: avgMtd,
-      color: avgMtd >= 0 ? '#D32F2F' : '#00C853',
-      suffix: avgMtd >= 0 ? 'below avg' : 'above avg',
+      color: avgMtd < 0 ? '#D32F2F' : '#00C853',
+      suffix: avgMtd < 0 ? 'below avg' : 'above avg',
     },
     {
       label: 'Total Priority Retailers',
@@ -227,7 +231,7 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
             <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
             <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
           </div>
-          <div className="h-[340px]">
+          <div className="relative h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -245,6 +249,13 @@ export default function RetailerPerformanceReport({ region, branch, zone }: Reta
                 <Tooltip formatter={(value: number) => value.toLocaleString()} />
               </PieChart>
             </ResponsiveContainer>
+            {totalPriority > 0 && (
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
+                <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
+                <span className="text-xs text-slate-400">of priority retailers</span>
+              </div>
+            )}
           </div>
           <div className="mt-4 grid gap-2">
             {priorityData.map(item => (
