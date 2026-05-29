@@ -459,55 +459,28 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </section>
       </div>
 
-      <div className={`grid gap-4 ${isZoneSelected ? 'xl:grid-cols-[1fr_2fr]' : 'xl:grid-cols-[2fr_1fr]'}`}>
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
-            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
-          </div>
-          <div className="relative h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={62}
-                  outerRadius={100}
-                  paddingAngle={2}
-                >
-                  {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-              </PieChart>
-            </ResponsiveContainer>
-            {totalPriority > 0 && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
-                <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
-                <span className="text-xs text-slate-400">of priority retailers</span>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 grid gap-2">
-            {priorityData.map((item: PriorityLevelData) => (
-              <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
-                  <div>
-                    <p className="text-sm font-semibold text-[#21264E]">{item.name}</p>
-                    <p className="text-xs text-slate-500">{item.description}</p>
-                  </div>
-                </div>
-                <span className="text-sm font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+      <div className="grid gap-4">
+        {isZoneSelected && (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
+              <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
+            </div>
+            <div className="h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                  <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
 
-        {isZoneSelected ? (
+        {isZoneSelected && (
           <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -599,51 +572,76 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               </table>
             </div>
           </section>
-        ) : (
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
-              <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
-            </div>
-            <div className="space-y-3">
-              {PRIORITY_LEVELS.map((level: PriorityLevel) => (
-                <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
-                      <p className="font-semibold text-[#21264E]">{level.name}</p>
-                    </div>
-                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-600">{level.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
         )}
-      </div>
 
-      {isZoneSelected && (
-        <div className="grid gap-4">
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
-              <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
-            </div>
-            <div className="h-[340px]">
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
+            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+            <div className="relative h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                  <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                <PieChart>
+                  <Pie
+                    data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={62}
+                    outerRadius={100}
+                    paddingAngle={2}
+                  >
+                    {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
+                    ))}
+                  </Pie>
                   <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                  <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
-                </BarChart>
+                </PieChart>
               </ResponsiveContainer>
             </div>
-          </section>
-        </div>
-      )}
+            <div className="space-y-4">
+              {totalPriority > 0 && (
+                <div className="rounded-3xl border border-[#E2E8F0] bg-[#f8fafc] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</p>
+                  <p className="mt-3 text-3xl font-bold text-[#00C853]">{p7Share}%</p>
+                  <p className="text-sm text-slate-500">of priority retailers</p>
+                </div>
+              )}
+              <div className="space-y-3">
+                {isZoneSelected ? (
+                  priorityData.map((item: PriorityLevelData) => (
+                    <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
+                        <div>
+                          <p className="text-sm font-semibold text-[#21264E]">{item.name}</p>
+                          <p className="text-xs text-slate-500">{item.description}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="space-y-3">
+                    {PRIORITY_LEVELS.map((level: PriorityLevel) => (
+                      <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
+                            <p className="font-semibold text-[#21264E]">{level.name}</p>
+                          </div>
+                          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-600">{level.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
