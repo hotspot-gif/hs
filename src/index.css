@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #21264e30;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #21264e60;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #21264E;
+  background: #fff7f2;
+}
+
+/* Recharts tooltip animation */
+.recharts-tooltip-wrapper {
+  z-index: 50 !important;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Mobile logo fixes */
+@media (max-width: 768px) {
+  /* Ensure logo images load properly on mobile */
+  img[alt="Field IQ Logo"] {
+    max-width: 100%;
+    height: auto !important;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Fallback for when images don't load */
+  .login-logo-fallback {
+    display: block !important;
+    font-size: 2.5rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+}
