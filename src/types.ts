@@ -171,6 +171,31 @@ export interface ZoneCoverageSummary {
   last_updated: string;
 }
 
+export interface ZoneCoveragePerformance {
+  id?: string;
+  branch: string;
+  zone: string;
+  region: string;
+  m0?: number;
+  m_0?: number;
+  m1?: number;
+  m_1?: number;
+  m2?: number;
+  m_2?: number;
+  m3?: number;
+  m_3?: number;
+  'm-1'?: number;
+  'm-2'?: number;
+  'm-3'?: number;
+  p1_count?: number;
+  p2_count?: number;
+  p3_count?: number;
+  p4_count?: number;
+  p5_count?: number;
+  p6_count?: number;
+  p7_count?: number;
+}
+
 export interface CoverageImportLog {
   id: number;
   filename: string;

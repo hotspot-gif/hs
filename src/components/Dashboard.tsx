@@ -9,13 +9,14 @@ import UserManagement from '@/components/UserManagement';
 import KPIAnalysis from '@/components/KPIAnalysis';
 import ISDM from '@/components/ISDM';
 import CoverageView from '@/components/CoverageView';
+import RetailerPerformanceReport from '@/components/RetailerPerformanceReport';
 import {
-  LayoutDashboard, Upload, LogOut, Search, User, Building2, Shield, FileDown, ChevronLeft, ChevronRight, Users, TrendingUp, Globe, Menu, X, Trophy,
+  LayoutDashboard, Upload, LogOut, Search, User, Building2, Shield, FileDown, ChevronLeft, ChevronRight, Users, TrendingUp, Globe, Menu, X, Trophy, Activity,
 } from 'lucide-react';
 import { generatePDF } from '@/utils/pdfExport';
 import { ALL_BRANCHES, BRANCH_TO_ZONES, normalizeBranch, NORTH_REGION, SOUTH_REGION } from '@/data/mockData';
 
-const VIEWS = { DASHBOARD: 'dashboard', KPI: 'kpi', ISDM: 'isdm', IMPORT: 'import', USERS: 'users', COVERAGE: 'coverage' } as const;
+const VIEWS = { DASHBOARD: 'dashboard', KPI: 'kpi', ISDM: 'isdm', IMPORT: 'import', USERS: 'users', COVERAGE: 'coverage', RETAILER_PERFORMANCE: 'retailer_performance' } as const;
 type View = (typeof VIEWS)[keyof typeof VIEWS];
 
 export default function Dashboard() {
@@ -90,6 +91,12 @@ export default function Dashboard() {
   const [isdmZone, setIsdmZone] = useState('');
   const [isdmZones, setIsdmZones] = useState<string[]>([]);
   const [isdmBranches, setIsdmBranches] = useState<string[]>([]);
+
+  const [perfRegion, setPerfRegion] = useState('ITALY');
+  const [perfBranch, setPerfBranch] = useState('');
+  const [perfZone, setPerfZone] = useState('');
+  const [perfBranches, setPerfBranches] = useState<string[]>([]);
+  const [perfZones, setPerfZones] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user || user.role !== 'ZONE-MANAGER') return;
@@ -666,6 +673,15 @@ export default function Dashboard() {
             <Globe size={20} />
             {(!sidebarCollapsed || mobileMenuOpen) && 'Coverage'}
           </button>
+          <button
+            onClick={() => { setView(VIEWS.RETAILER_PERFORMANCE); setMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+              view === VIEWS.RETAILER_PERFORMANCE ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Activity size={20} />
+            {(!sidebarCollapsed || mobileMenuOpen) && 'Retailer Performance'}
+          </button>
           {user?.role === 'HS-ADMIN' && (
             <button
               onClick={() => { setView(VIEWS.IMPORT); setMobileMenuOpen(false); }}
@@ -834,6 +850,55 @@ export default function Dashboard() {
             </div>
           )}
 
+          {view === VIEWS.RETAILER_PERFORMANCE && (
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 min-w-[140px]">
+                <Globe size={16} className="text-[#21264E]" />
+                {isZoneManager ? (
+                  <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[140px]">
+                    {perfRegion}
+                  </div>
+                ) : (
+                  <select
+                    value={perfRegion}
+                    onChange={e => { setPerfRegion(e.target.value); setPerfBranch(''); setPerfZone(''); }}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                  >
+                    {hasAllBranchAccess ? (
+                      <>
+                        <option value="ITALY">ITALY (All)</option>
+                        <option value="NORTH">NORTH</option>
+                        <option value="SOUTH">SOUTH</option>
+                      </>
+                    ) : (
+                      <option value={perfRegion}>{perfRegion}</option>
+                    )}
+                  </select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 min-w-[180px] max-w-[220px]">
+                <Shield size={16} className="text-[#21264E]" />
+                {isZoneManager ? (
+                  <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[180px]">
+                    {perfBranch || '—'}
+                  </div>
+                ) : (
+                  <select
+                    value={perfBranch}
+                    onChange={e => { setPerfBranch(e.target.value); setPerfZone(''); }}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                  >
+                    <option value="">{perfRegion === 'ITALY' ? 'All Branches' : `All ${perfRegion} Branches`}</option>
+                    {perfBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* DASHBOARD - Zone selector */}
           {view === VIEWS.DASHBOARD && (
             <div className="w-full md:w-auto flex items-center gap-2">
@@ -850,6 +915,28 @@ export default function Dashboard() {
                 >
                   <option value="">All Zones</option>
                   {zones.map(z => (
+                    <option key={z} value={z}>{z}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {view === VIEWS.RETAILER_PERFORMANCE && (
+            <div className="w-full md:w-auto flex items-center gap-2">
+              <Building2 size={16} className="text-[#21264E]" />
+              {isZoneManager ? (
+                <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold">
+                  {perfZone || '—'}
+                </div>
+              ) : (
+                <select
+                  value={perfZone}
+                  onChange={e => setPerfZone(e.target.value)}
+                  className="w-full md:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                >
+                  <option value="">All Zones</option>
+                  {perfZones.map(z => (
                     <option key={z} value={z}>{z}</option>
                   ))}
                 </select>
@@ -976,6 +1063,12 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-[#21264E] font-bold">
               <Globe size={18} />
               <span>Coverage</span>
+            </div>
+          )}
+          {view === VIEWS.RETAILER_PERFORMANCE && (
+            <div className="flex items-center gap-2 text-[#21264E] font-bold">
+              <Activity size={18} />
+              <span>Retailer Performance</span>
             </div>
           )}
 
@@ -1123,6 +1216,8 @@ export default function Dashboard() {
             <DataImport user={user} />
           ) : view === VIEWS.COVERAGE ? (
             <CoverageView user={user} />
+          ) : view === VIEWS.RETAILER_PERFORMANCE ? (
+            <RetailerPerformanceReport user={user} region={perfRegion} branch={perfBranch} zone={perfZone} />
           ) : view === VIEWS.KPI ? (
             <KPIAnalysis user={user} branch={kpiBranch} zone={kpiZone} region={kpiRegion} />
           ) : view === VIEWS.ISDM ? (
