@@ -215,12 +215,21 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   const currentMonthLabel = useMemo(() => getMonthLabel(0), []);
   const monthInfo = useMemo<MonthInfo[]>(
-    () => MONTH_KEYS.map((entry: MonthInfo) => ({ ...entry, label: `${entry.label} (${getMonthLabel(entry.offset)})` })),
+    () => MONTH_KEYS.map((entry: MonthInfo) => ({
+      ...entry,
+      label: `${entry.label} (${getMonthLabel(entry.offset)})`,
+      shortLabel: entry.offset === 0 ? 'MTD' : `M${entry.offset}`,
+    })),
     [],
   );
   const retailerTableColumns = useMemo(
     () => [
-      ...monthInfo.map((entry: MonthInfo) => ({ key: entry.key, label: entry.label, aliases: entry.aliases })),
+      ...monthInfo.map((entry: MonthInfo & { shortLabel: string }) => ({
+        key: entry.key,
+        label: entry.label,
+        shortLabel: entry.shortLabel,
+        aliases: entry.aliases
+      })),
     ],
     [monthInfo],
   );
@@ -660,9 +669,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               <div>
                 <h2 className="text-lg font-semibold text-[#21264E]">Retailer Performance Details</h2>
                 <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
-                <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 md:hidden">
-                  ← Scroll horizontally to view details →
-                </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
@@ -700,54 +706,58 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 </div>
               </div>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <div className="overflow-x-hidden rounded-xl border border-slate-200">
+              <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr className="divide-x divide-slate-200">
                     <th
-                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100"
                       onClick={() => handleSort('retailer_id')}
                     >
                       <div className="flex items-center gap-1">
-                        Retailer ID
+                        <span className="hidden md:inline">Retailer ID</span>
+                        <span className="md:hidden">ID</span>
                         {sortConfig?.key === 'retailer_id' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                          sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                         )}
                       </div>
                     </th>
-                    {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
+                    {retailerTableColumns.map((column: { key: string; label: string; shortLabel: string; aliases: string[] }) => (
                       <th
                         key={column.key}
-                        className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                        className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
                         onClick={() => handleSort(column.key)}
                       >
-                        <div className="flex items-center gap-1">
-                          {column.label}
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="hidden md:inline">{column.label}</span>
+                          <span className="md:hidden">{column.shortLabel}</span>
                           {sortConfig?.key === column.key && (
-                            sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                            sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                           )}
                         </div>
                       </th>
                     ))}
                     <th
-                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
                       onClick={() => handleSort('avg_mtd')}
                     >
-                      <div className="flex items-center gap-1">
-                        Avg MTD
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="hidden md:inline">Avg MTD</span>
+                        <span className="md:hidden">Avg</span>
                         {sortConfig?.key === 'avg_mtd' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                          sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                         )}
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
                       onClick={() => handleSort('priority_level')}
                     >
-                      <div className="flex items-center gap-1">
-                        Priority Level
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="hidden md:inline">Priority Level</span>
+                        <span className="md:hidden">Pri</span>
                         {sortConfig?.key === 'priority_level' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                          sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                         )}
                       </div>
                     </th>
@@ -761,21 +771,21 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
                       return (
                         <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
-                          <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                          <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 break-all md:break-normal">
                             {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
                           </td>
-                          {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
-                            <td key={column.key} className="whitespace-nowrap px-4 py-3 text-slate-700">
+                          {retailerTableColumns.map((column: any) => (
+                            <td key={column.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
                               {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
-                          <td className="whitespace-nowrap px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
-                          <td className="whitespace-nowrap px-4 py-3">
+                          <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{averageMtd.toLocaleString()}</td>
+                          <td className="px-1 py-2 md:px-4 md:py-3 text-center">
                             <span
-                              className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white"
+                              className="inline-flex rounded-full px-1.5 py-0.5 md:px-3 md:py-1 text-[8px] md:text-xs font-semibold uppercase tracking-tight md:tracking-[0.18em] text-white"
                               style={{ backgroundColor: getPriorityColor(priorityValue) }}
                             >
-                              {priorityValue || 'Unknown'}
+                              {priorityValue.split('-')[0].trim() || 'Unknown'}
                             </span>
                           </td>
                         </tr>
@@ -783,7 +793,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                     })
                   ) : (
                     <tr>
-                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-sm text-slate-500">
+                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
                         No retailer details found for this zone.
                       </td>
                     </tr>
