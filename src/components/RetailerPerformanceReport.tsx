@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileDown, FileSpreadsheet } from 'lucide-react';
+import { FileDown, FileSpreadsheet, ChevronUp, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { RpaUser } from '@/types';
 import {
@@ -156,6 +156,10 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'avg_mtd',
+    direction: 'desc',
+  });
 
   const isZoneSelected = Boolean(zone);
 
@@ -223,11 +227,57 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   const normalizedPriority = (value: unknown) => String(value ?? '').trim().toUpperCase();
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
-    return retailerRows.filter((row: Record<string, unknown>) => {
+    let result = retailerRows.filter((row: Record<string, unknown>) => {
       const rowPriority = normalizedPriority(getRowPriority(row));
       return priorityFilter === 'ALL' || rowPriority.startsWith(priorityFilter);
     });
-  }, [priorityFilter, retailerRows]);
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortConfig.key === 'retailer_id') {
+          aValue = String(a['retailer_id'] ?? a['id'] ?? a['retailer'] ?? '');
+          bValue = String(b['retailer_id'] ?? b['id'] ?? b['retailer'] ?? '');
+        } else if (sortConfig.key === 'avg_mtd') {
+          aValue = fieldValue(a, AVERAGE_MTD_ALIASES);
+          bValue = fieldValue(b, AVERAGE_MTD_ALIASES);
+        } else if (sortConfig.key === 'priority_level') {
+          aValue = getRowPriority(a);
+          bValue = getRowPriority(b);
+        } else {
+          // Find the column by key to get aliases
+          const col = retailerTableColumns.find(c => c.key === sortConfig.key);
+          if (col) {
+            aValue = fieldValue(a, col.aliases);
+            bValue = fieldValue(b, col.aliases);
+          } else {
+            aValue = 0;
+            bValue = 0;
+          }
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns]);
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const priorityFilterOptions = useMemo(
     () => [
@@ -483,7 +533,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               Monitoring current MTD performance against the rolling 3-month retailer average using zone coverage summary data.
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 grid-cols-1 md:grid-cols-3">
             <div className="rounded-2xl bg-[#21264E] px-4 py-3 text-white shadow-sm">
               <p className="text-[11px] uppercase tracking-[0.18em] text-white/70">Region</p>
               <p className="mt-2 text-sm font-semibold">{region || 'ITALY'}</p>
@@ -500,7 +550,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1">
         {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
           <div
             key={card.label}
@@ -514,7 +564,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         ))}
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 grid-cols-1">
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
@@ -556,7 +606,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </section>
       </div>
 
-      <div className={`grid gap-4 ${isZoneSelected ? 'xl:grid-cols-[1fr_2fr]' : 'xl:grid-cols-[2fr_1fr]'}`}>
+      <div className="grid gap-4 grid-cols-1">
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
@@ -610,6 +660,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               <div>
                 <h2 className="text-lg font-semibold text-[#21264E]">Retailer Performance Details</h2>
                 <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
+                <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 md:hidden">
+                  ← Scroll horizontally to view details →
+                </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
@@ -647,16 +700,57 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 </div>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Retailer ID</th>
+                  <tr className="divide-x divide-slate-200">
+                    <th
+                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      onClick={() => handleSort('retailer_id')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Retailer ID
+                        {sortConfig?.key === 'retailer_id' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                        )}
+                      </div>
+                    </th>
                     {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
-                      <th key={column.key} className="px-4 py-3 font-semibold">{column.label}</th>
+                      <th
+                        key={column.key}
+                        className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                        onClick={() => handleSort(column.key)}
+                      >
+                        <div className="flex items-center gap-1">
+                          {column.label}
+                          {sortConfig?.key === column.key && (
+                            sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                          )}
+                        </div>
+                      </th>
                     ))}
-                    <th className="px-4 py-3 font-semibold">Avg MTD</th>
-                    <th className="px-4 py-3 font-semibold">Priority Level</th>
+                    <th
+                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      onClick={() => handleSort('avg_mtd')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Avg MTD
+                        {sortConfig?.key === 'avg_mtd' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold hover:bg-slate-100"
+                      onClick={() => handleSort('priority_level')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Priority Level
+                        {sortConfig?.key === 'priority_level' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -666,17 +760,17 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                       const averageMtd = Math.round(fieldValue(row, AVERAGE_MTD_ALIASES));
 
                       return (
-                        <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50">
+                        <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
                           <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
                             {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
                           </td>
                           {retailerTableColumns.map((column: { key: string; label: string; aliases: string[] }) => (
-                            <td key={column.key} className="px-4 py-3 text-slate-700">
+                            <td key={column.key} className="whitespace-nowrap px-4 py-3 text-slate-700">
                               {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
-                          <td className="px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
-                          <td className="px-4 py-3">
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-700">{averageMtd.toLocaleString()}</td>
+                          <td className="whitespace-nowrap px-4 py-3">
                             <span
                               className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white"
                               style={{ backgroundColor: getPriorityColor(priorityValue) }}
