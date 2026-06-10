@@ -233,14 +233,15 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     { name: '€14.99', value: totals.plan_14_99, color: '#46286E' },
   ], [totals]);
 
-  const groupPieChartData = useMemo(() => {
-    const totalActivation = totals.no_plan + totals.group_a + totals.group_b;
-    return [
-      { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D', total: totalActivation },
-      { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1', total: totalActivation },
-      { name: 'No Plan', value: totals.no_plan, color: '#FF0000', total: totalActivation },
-    ];
+  const totalActivation = useMemo(() => {
+    return totals.no_plan + totals.group_a + totals.group_b;
   }, [totals]);
+
+  const groupPieChartData = useMemo(() => [
+    { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D' },
+    { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1' },
+    { name: 'No Plan', value: totals.no_plan, color: '#FF0000' },
+  ], [totals]);
 
   const noPlanZoneChartData = useMemo(() => {
     return rows.map(row => ({
@@ -632,8 +633,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
                   innerRadius={62}
                   outerRadius={100}
                   paddingAngle={2}
-                  label={({ name, value, total }) => {
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(0) : 0;
+                  label={({ name, value }) => {
+                    const percentage = totalActivation > 0 ? ((value / totalActivation) * 100).toFixed(0) : 0;
                     return `${name} ${percentage}%`;
                   }}
                 >
