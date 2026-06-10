@@ -40,7 +40,7 @@ const PRIORITY_LEVELS: PriorityLevel[] = [
     key: 'p1_count',
     name: 'P1 - CRITICAL LOSS',
     color: '#D32F2F',
-    description: 'Immediate escalation to Zone Manager. Manager must visit personally. Understand the reason for inactivity (competition, technical issues, closure).',
+    description: 'TOP RETAILER DROPPING FAST. Immediate escalation to Zone Manager. Manager must visit personally.',
     timeline: 'Within 24 hours',
   },
   {
@@ -147,7 +147,21 @@ const getRowPriority = (row: Record<string, unknown>) => {
   return String(raw).trim();
 };
 
-const AVERAGE_MTD_ALIASES = ['avg_mtd', 'avg_mtd_value', 'avgmtd', 'average_mtd'];
+const calculateMtdVariance = (row: Record<string, unknown>, monthInfo: MonthInfo[]) => {
+  const m0 = fieldValue(row, monthInfo.find(m => m.offset === 0)?.aliases || []);
+  const m1 = fieldValue(row, monthInfo.find(m => m.offset === -1)?.aliases || []);
+  const m2 = fieldValue(row, monthInfo.find(m => m.offset === -2)?.aliases || []);
+  const m3 = fieldValue(row, monthInfo.find(m => m.offset === -3)?.aliases || []);
+
+  const avgLast3 = (m1 + m2 + m3) / 3;
+
+  const now = new Date();
+  const today = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const expectedPerformance = (avgLast3 / daysInMonth) * (today - 1);
+  return Math.round(m0 - expectedPerformance);
+};
 
 export default function RetailerPerformanceReport({ region, branch, zone, user }: RetailerPerformanceReportProps) {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -250,8 +264,8 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
           aValue = String(a['retailer_id'] ?? a['id'] ?? a['retailer'] ?? '');
           bValue = String(b['retailer_id'] ?? b['id'] ?? b['retailer'] ?? '');
         } else if (sortConfig.key === 'avg_mtd') {
-          aValue = fieldValue(a, AVERAGE_MTD_ALIASES);
-          bValue = fieldValue(b, AVERAGE_MTD_ALIASES);
+          aValue = calculateMtdVariance(a, monthInfo);
+          bValue = calculateMtdVariance(b, monthInfo);
         } else if (sortConfig.key === 'priority_level') {
           aValue = getRowPriority(a);
           bValue = getRowPriority(b);
@@ -321,7 +335,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         filteredRetailerRows.map((row: Record<string, unknown>) => ({
           retailer_id: row['retailer_id'] ?? row['id'] ?? '',
           ...Object.fromEntries(monthInfo.map((entry: MonthInfo) => [entry.key, fieldValue(row, entry.aliases)])),
-          avg_mtd: Math.round(fieldValue(row, AVERAGE_MTD_ALIASES)),
+          mtd_variance: calculateMtdVariance(row, monthInfo),
           p_level: getRowPriority(row),
         }))
       );
@@ -385,13 +399,13 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         head: [[
           'Retailer ID',
           ...monthInfo.map((entry: MonthInfo) => entry.label),
-          'Avg MTD',
+          'MTD Var',
           'Priority Level',
         ]],
         body: filteredRetailerRows.map((row: Record<string, unknown>) => [
           String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? ''),
           ...monthInfo.map((entry: MonthInfo) => fieldValue(row, entry.aliases).toLocaleString()),
-          Math.round(fieldValue(row, AVERAGE_MTD_ALIASES)).toLocaleString(),
+          calculateMtdVariance(row, monthInfo).toLocaleString(),
           getRowPriority(row),
         ]),
         startY: 24,
@@ -469,7 +483,15 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     const previous = trendData.slice(0, 3).map((entry: { value: number }) => entry.value);
     return previous.length > 0 ? previous.reduce((sum: number, value: number) => sum + value, 0) / previous.length : 0;
   }, [trendData]);
-  const avgMtd = useMemo(() => currentMtd - last3Average, [currentMtd, last3Average]);
+
+  const avgMtd = useMemo(() => {
+    const now = new Date();
+    const today = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const expectedPerformance = (last3Average / daysInMonth) * (today - 1);
+    return currentMtd - expectedPerformance;
+  }, [currentMtd, last3Average]);
+
   const roundedAvgMtd = useMemo(() => Math.round(avgMtd), [avgMtd]);
 
   const priorityData = useMemo<PriorityLevelData[]>(
@@ -501,10 +523,10 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       color: '#08dc7d',
     },
     {
-      label: 'MTD vs 3-Month Avg',
+      label: 'MTD Variance',
       value: roundedAvgMtd,
       color: avgMtd < 0 ? '#D32F2F' : '#00C853',
-      suffix: avgMtd < 0 ? 'below avg' : 'above avg',
+      suffix: avgMtd < 0 ? 'below expected' : 'above expected',
     },
     {
       label: 'Total Priority Retailers',
@@ -742,8 +764,8 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                       onClick={() => handleSort('avg_mtd')}
                     >
                       <div className="flex items-center justify-center gap-1">
-                        <span className="hidden md:inline">Avg MTD</span>
-                        <span className="md:hidden">Avg</span>
+                        <span className="hidden md:inline">MTD Variance</span>
+                        <span className="md:hidden">Var</span>
                         {sortConfig?.key === 'avg_mtd' && (
                           sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                         )}
@@ -767,7 +789,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   {filteredRetailerRows.length > 0 ? (
                     filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
                       const priorityValue = getRowPriority(row);
-                      const averageMtd = Math.round(fieldValue(row, AVERAGE_MTD_ALIASES));
+                      const mtdVariance = calculateMtdVariance(row, monthInfo);
 
                       return (
                         <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
@@ -779,7 +801,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                               {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
-                          <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{averageMtd.toLocaleString()}</td>
+                          <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
                           <td className="px-1 py-2 md:px-4 md:py-3 text-center">
                             <span
                               className="inline-flex rounded-full px-1.5 py-0.5 md:px-3 md:py-1 text-[8px] md:text-xs font-semibold uppercase tracking-tight md:tracking-[0.18em] text-white"
