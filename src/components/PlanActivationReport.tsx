@@ -238,8 +238,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   }, [totals]);
 
   const groupPieChartData = useMemo(() => [
-    { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D' },
-    { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1' },
+    { name: 'With Plans', value: totals.group_a + totals.group_b, color: '#08DC7D' },
     { name: 'No Plan', value: totals.no_plan, color: '#FF0000' },
   ], [totals]);
 
@@ -620,8 +619,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         {/* Group Pie Chart */}
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Plan Less than €6.99 vs Greater than €6.99</h2>
-            <p className="text-sm text-slate-500">Distribution of retailers by value group.</p>
+            <h2 className="text-lg font-semibold text-[#21264E]">Activations With Plans vs No Plan</h2>
+            <p className="text-sm text-slate-500">Distribution of retailers with and without plans.</p>
           </div>
           <div className="relative h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
