@@ -209,6 +209,11 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     });
   }, [rows]);
 
+  const plansShare = useMemo(() => {
+    const plansTotal = totals.group_a + totals.group_b;
+    return totals.total > 0 ? Math.round((plansTotal / totals.total) * 100) : 0;
+  }, [totals]);
+
   // Find top plan
   const topPlan = useMemo(() => {
     const plans = [
@@ -238,7 +243,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   }, [totals]);
 
   const groupPieChartData = useMemo(() => [
-    { name: 'With Plans', value: totals.group_a + totals.group_b, color: '#08DC7D' },
+    { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D' },
+    { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1' },
     { name: 'No Plan', value: totals.no_plan, color: '#FF0000' },
   ], [totals]);
 
@@ -570,7 +576,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Activations</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{(totals.group_a + totals.group_b).toLocaleString()}</p>
+          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.total.toLocaleString()}</p>
         </div>
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FF0000', borderLeftWidth: '4px' }}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">No Plan</p>
@@ -619,8 +625,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         {/* Group Pie Chart */}
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Activations With Plans vs No Plan</h2>
-            <p className="text-sm text-slate-500">Distribution of retailers with and without plans.</p>
+            <h2 className="text-lg font-semibold text-[#21264E]">Plan Less than €6.99 vs Greater than €6.99</h2>
+            <p className="text-sm text-slate-500">Distribution of retailers by value group.</p>
           </div>
           <div className="relative h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -644,6 +650,13 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
                 <Tooltip formatter={(value: number) => value.toLocaleString()} />
               </PieChart>
             </ResponsiveContainer>
+            {totalActivation > 0 && (
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">With Plans</span>
+                <span className="mt-1 text-3xl font-bold text-[#245bc1]">{plansShare}%</span>
+                <span className="text-xs text-slate-400">of total activations</span>
+              </div>
+            )}
           </div>
         </section>
       </div>
