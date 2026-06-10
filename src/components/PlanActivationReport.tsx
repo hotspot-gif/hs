@@ -442,7 +442,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       const currentY = 22;
 
       const planTiles = [
-        { label: 'No Plan', value: totals.no_plan, color: '#FF0000' },
+        { label: 'No Plan', value: totals.no_plan, color: '#DC2626' },
         { label: '€5.99', value: totals.plan_5_99, color: '#FFDD64' },
         { label: '€6.99', value: totals.plan_6_99, color: '#FFA500' },
         { label: '€7.99', value: totals.plan_7_99, color: '#08DC7D' },
@@ -516,7 +516,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
         alternateRowStyles: { fillColor: [250, 248, 245] },
         styles: { font: 'helvetica' },
-        tableWidth: 'wrap',
+        tableWidth: 'full',
         didDrawPage: footerHook,
         didParseCell: (data: any) => {
           if (data.section === 'body') {
