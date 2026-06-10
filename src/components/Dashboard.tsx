@@ -12,7 +12,7 @@ import CoverageView from '@/components/CoverageView';
 import RetailerPerformanceReport from '@/components/RetailerPerformanceReport';
 import PlanActivationReport from '@/components/PlanActivationReport';
 import {
-  LayoutDashboard, Upload, LogOut, Search, User, Building2, Shield, FileDown, ChevronLeft, ChevronRight, Users, TrendingUp, Globe, Menu, X, Trophy, Activity,
+  LayoutDashboard, Upload, LogOut, Search, User, Building2, Shield, FileDown, ChevronLeft, ChevronRight, Users, TrendingUp, Globe, Menu, X, Trophy, Activity, BarChart2,
 } from 'lucide-react';
 import { generatePDF } from '@/utils/pdfExport';
 import { ALL_BRANCHES, BRANCH_TO_ZONES, normalizeBranch, NORTH_REGION, SOUTH_REGION } from '@/data/mockData';
@@ -843,8 +843,8 @@ export default function Dashboard() {
               view === VIEWS.PLAN_ACTIVATION ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <Activity size={20} />
-            {(!sidebarCollapsed || mobileMenuOpen) && 'Plan Activation Report'}
+            <BarChart2 size={20} />
+              {(!sidebarCollapsed || mobileMenuOpen) && 'Plan Activation Report'}
           </button>
           {user?.role === 'HS-ADMIN' && (
             <button
@@ -1308,7 +1308,7 @@ export default function Dashboard() {
           )}
           {view === VIEWS.PLAN_ACTIVATION && (
             <div className="flex items-center gap-2 text-[#21264E] font-bold">
-              <Activity size={18} />
+              <BarChart2 size={18} />
               <span>Plan Activation Report</span>
             </div>
           )}

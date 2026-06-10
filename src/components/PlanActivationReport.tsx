@@ -39,13 +39,30 @@ interface PlanData {
   total: number;
 }
 
+interface RetailerPlanData {
+  retailer_id: string;
+  no_plan: number;
+  plan_5_99: number;
+  plan_6_99: number;
+  plan_7_99: number;
+  plan_9_99: number;
+  plan_11_99: number;
+  plan_14_99: number;
+  group_a: number;
+  group_b: number;
+  total: number;
+}
+
 export default function PlanActivationReport({ region, branch, zone, user }: PlanActivationReportProps) {
   const [rows, setRows] = useState<PlanData[]>([]);
+  const [retailerRows, setRetailerRows] = useState<RetailerPlanData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof PlanData; direction: 'asc' | 'desc' } | null>({
+  const [sortConfig, setSortConfig] = useState<{ key: keyof PlanData | keyof RetailerPlanData; direction: 'asc' | 'desc' } | null>({
     key: 'zone',
     direction: 'asc',
   });
+
+  const isZoneSelected = Boolean(zone);
 
   useEffect(() => {
     setLoading(true);
@@ -98,7 +115,59 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       }
       setLoading(false);
     });
-  }, [region, branch, zone]);
+
+    if (isZoneSelected) {
+      let retailerQuery = supabase.from('retailer_coverage').select('*');
+
+      if (region && region !== 'ITALY') {
+        retailerQuery = retailerQuery.eq('region', region);
+      }
+      if (branch) {
+        retailerQuery = retailerQuery.eq('branch', branch);
+      }
+      if (zone) {
+        retailerQuery = retailerQuery.eq('zone', zone);
+      }
+
+      retailerQuery.limit(5000).then(({ data, error }: { data: any[] | null; error: any }) => {
+        if (error) {
+          console.error('Retailer plan fetch error:', error);
+          setRetailerRows([]);
+        } else {
+          const transformed = (data || []).map((row: any) => {
+            const no_plan = Number(row.no_plan || 0);
+            const plan_5_99 = Number(row.plan_5_99 || 0);
+            const plan_6_99 = Number(row.plan_6_99 || 0);
+            const plan_7_99 = Number(row.plan_7_99 || 0);
+            const plan_9_99 = Number(row.plan_9_99 || 0);
+            const plan_11_99 = Number(row.plan_11_99 || 0);
+            const plan_14_99 = Number(row.plan_14_99 || 0);
+            
+            const group_a = plan_5_99 + plan_6_99;
+            const group_b = plan_7_99 + plan_9_99 + plan_11_99 + plan_14_99;
+            const total = no_plan + group_a + group_b;
+
+            return {
+              retailer_id: row.retailer_id || '',
+              no_plan,
+              plan_5_99,
+              plan_6_99,
+              plan_7_99,
+              plan_9_99,
+              plan_11_99,
+              plan_14_99,
+              group_a,
+              group_b,
+              total,
+            };
+          });
+          setRetailerRows(transformed);
+        }
+      });
+    } else {
+      setRetailerRows([]);
+    }
+  }, [region, branch, zone, isZoneSelected]);
 
   // Calculated totals
   const totals = useMemo(() => {
@@ -144,29 +213,29 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
 
   // Chart data
   const planDistributionChartData = useMemo(() => [
-    { name: 'No Plan', value: totals.no_plan, color: '#FFC8B2' },
+    { name: 'No Plan', value: totals.no_plan, color: '#FF0000' },
     { name: '€5.99', value: totals.plan_5_99, color: '#FFDD64' },
-    { name: '€6.99', value: totals.plan_6_99, color: '#FFDD64' },
+    { name: '€6.99', value: totals.plan_6_99, color: '#FFA500' },
     { name: '€7.99', value: totals.plan_7_99, color: '#08DC7D' },
-    { name: '€9.99', value: totals.plan_9_99, color: '#08DC7D' },
+    { name: '€9.99', value: totals.plan_9_99, color: '#00CED1' },
     { name: '€11.99', value: totals.plan_11_99, color: '#245BC1' },
-    { name: '€14.99', value: totals.plan_14_99, color: '#245BC1' },
+    { name: '€14.99', value: totals.plan_14_99, color: '#46286E' },
   ], [totals]);
 
   const groupPieChartData = useMemo(() => [
-    { name: 'Low Value (≤ €6.99)', value: totals.group_a, color: '#FFDD64' },
-    { name: 'High Value (&gt; €6.99)', value: totals.group_b, color: '#08DC7D' },
+    { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D' },
+    { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1' },
   ], [totals]);
 
   const noPlanZoneChartData = useMemo(() => {
     return rows.map(row => ({
       zone: row.zone,
       no_plan: row.no_plan,
-      total: row.total,
+      with_plans: row.group_a + row.group_b,
     })).sort((a, b) => b.no_plan - a.no_plan).slice(0, 10);
   }, [rows]);
 
-  const handleSort = (key: keyof PlanData) => {
+  const handleSort = (key: any) => {
     let direction: 'asc' | 'desc' = 'desc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
       direction = 'asc';
@@ -177,8 +246,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   const sortedRows = useMemo(() => {
     if (!sortConfig) return rows;
     return [...rows].sort((a, b) => {
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
+      const aVal = a[sortConfig.key as keyof PlanData];
+      const bVal = b[sortConfig.key as keyof PlanData];
       
       if (typeof aVal === 'string' && typeof bVal === 'string') {
         return sortConfig.direction === 'asc' 
@@ -191,6 +260,24 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         : (bVal as number) - (aVal as number);
     });
   }, [rows, sortConfig]);
+
+  const sortedRetailerRows = useMemo(() => {
+    if (!sortConfig) return retailerRows;
+    return [...retailerRows].sort((a, b) => {
+      const aVal = a[sortConfig.key as keyof RetailerPlanData];
+      const bVal = b[sortConfig.key as keyof RetailerPlanData];
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortConfig.direction === 'asc' 
+          ? aVal.localeCompare(bVal) 
+          : bVal.localeCompare(aVal);
+      }
+      
+      return sortConfig.direction === 'asc' 
+        ? (aVal as number) - (bVal as number) 
+        : (bVal as number) - (aVal as number);
+    });
+  }, [retailerRows, sortConfig]);
 
   if (!loading && rows.length === 0) {
     return (
@@ -236,19 +323,19 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Retailers</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.total.toLocaleString()}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Activations</p>
+          <p className="mt-4 text-3xl font-bold text-[#21264E]">{(totals.group_a + totals.group_b).toLocaleString()}</p>
         </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFC8B2', borderLeftWidth: '4px' }}>
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FF0000', borderLeftWidth: '4px' }}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">No Plan</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.no_plan.toLocaleString()}</p>
         </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFDD64', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Low Value (≤ €6.99)</p>
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#08DC7D', borderLeftWidth: '4px' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plan Less than €6.99</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_a.toLocaleString()}</p>
         </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#08DC7D', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">High Value (&gt; €6.99)</p>
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plans Greater than €6.99</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_b.toLocaleString()}</p>
         </div>
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
@@ -286,8 +373,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         {/* Group Pie Chart */}
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Low vs High Value</h2>
-            <p className="text-sm text-slate-500">Distribution of retailers by value group (≤ €6.99 vs &gt; €6.99).</p>
+            <h2 className="text-lg font-semibold text-[#21264E]">Plan Less than €6.99 vs Greater than €6.99</h2>
+            <p className="text-sm text-slate-500">Distribution of retailers by value group.</p>
           </div>
           <div className="relative h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -312,41 +399,43 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         </section>
       </div>
 
-      {/* No Plan Trend Chart */}
-      <div className="grid gap-4 grid-cols-1">
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">No Plan by Zone</h2>
-            <p className="text-sm text-slate-500">Zones with the highest number of retailers without a plan (top 10).</p>
-          </div>
-          <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={noPlanZoneChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                <XAxis dataKey="zone" tick={{ fill: '#334155', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Legend />
-                <Bar dataKey="no_plan" name="No Plan" fill="#FFC8B2" radius={[8, 8, 0, 0]} />
-                <Line type="monotone" dataKey="total" name="Total Retailers" stroke="#245BC1" strokeWidth={2} dot={{ r: 4 }} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      </div>
+      {/* No Plan by Zone - Only show if no zone selected */}
+      {!isZoneSelected && (
+        <div className="grid gap-4 grid-cols-1">
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">No Plan by Zone</h2>
+              <p className="text-sm text-slate-500">Zones with the highest number of retailers without a plan (top 10).</p>
+            </div>
+            <div className="h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={noPlanZoneChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} stackOffset="expand">
+                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                  <XAxis dataKey="zone" tick={{ fill: '#334155', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                  <Legend />
+                  <Bar dataKey="with_plans" name="With Plans" fill="#245BC1" stackId="a" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="no_plan" name="No Plans" fill="#FF0000" stackId="a" radius={[0, 0, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Data Table */}
       <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-[#21264E]">Zone-wise Breakdown</h2>
-          <p className="text-sm text-slate-500">Detailed plan activation data per zone.</p>
+          <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : "Zone-wise Breakdown"}</h2>
+          <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : "Detailed plan activation data per zone."}</p>
         </div>
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr className="divide-x divide-slate-200">
                 {[
-                  { key: 'zone', label: 'Zone' },
+                  isZoneSelected ? { key: 'retailer_id', label: 'Retailer ID' } : { key: 'zone', label: 'Zone' },
                   { key: 'no_plan', label: 'No Plan' },
                   { key: 'plan_5_99', label: '€5.99' },
                   { key: 'plan_6_99', label: '€6.99' },
@@ -354,14 +443,14 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
                   { key: 'plan_9_99', label: '€9.99' },
                   { key: 'plan_11_99', label: '€11.99' },
                   { key: 'plan_14_99', label: '€14.99' },
-                  { key: 'group_a', label: 'Group A' },
-                  { key: 'group_b', label: 'Group B' },
+                  { key: 'group_a', label: 'Plan Less than €6.99' },
+                  { key: 'group_b', label: 'Plans Greater than €6.99' },
                   { key: 'total', label: 'Total' },
                 ].map((col) => (
                   <th
                     key={col.key}
                     className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
-                    onClick={() => handleSort(col.key as keyof PlanData)}
+                    onClick={() => handleSort(col.key)}
                   >
                     <div className="flex items-center justify-center gap-1">
                       <span>{col.label}</span>
@@ -374,45 +463,49 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {sortedRows.map((row, index) => (
-                <tr key={`${row.zone}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
-                  <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900">{row.zone}</td>
-                  <td 
-                    className="px-1 py-2 md:px-4 md:py-3 text-center"
-                    style={{ backgroundColor: row.no_plan > 0 ? '#FFC8B2' : 'transparent' }}
-                  >
-                    {row.no_plan.toLocaleString()}
-                  </td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_5_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_6_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_7_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_9_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_11_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_14_99.toLocaleString()}</td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.group_a.toLocaleString()}</td>
-                  <td 
-                    className="px-1 py-2 md:px-4 md:py-3 text-center"
-                    style={{ backgroundColor: row.group_b > 0 ? '#08DC7D' : 'transparent' }}
-                  >
-                    {row.group_b.toLocaleString()}
-                  </td>
-                  <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center font-semibold">{row.total.toLocaleString()}</td>
-                </tr>
-              ))}
-              {/* Total row */}
-              <tr className="bg-slate-50 font-semibold divide-x divide-slate-200">
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-900">Total</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-center" style={{ backgroundColor: '#FFC8B2' }}>{totals.no_plan.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_5_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_6_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_7_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_9_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_11_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.plan_14_99.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{totals.group_a.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-center" style={{ backgroundColor: '#08DC7D' }}>{totals.group_b.toLocaleString()}</td>
-                <td className="px-1 py-2 md:px-4 md:py-3 text-slate-900 text-center">{totals.total.toLocaleString()}</td>
-              </tr>
+              {isZoneSelected ? (
+                sortedRetailerRows.map((row, index) => (
+                  <tr key={`${row.retailer_id}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                    <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900">{row.retailer_id}</td>
+                    <td 
+                      className="px-1 py-2 md:px-4 md:py-3 text-center"
+                      style={{ backgroundColor: row.no_plan > 0 ? '#FFE4E1' : 'transparent' }}
+                    >
+                      {row.no_plan.toLocaleString()}
+                    </td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_5_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_6_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_7_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_9_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_11_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_14_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.group_a.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.group_b.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center font-semibold">{row.total.toLocaleString()}</td>
+                  </tr>
+                ))
+              ) : (
+                sortedRows.map((row, index) => (
+                  <tr key={`${row.zone}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                    <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900">{row.zone}</td>
+                    <td 
+                      className="px-1 py-2 md:px-4 md:py-3 text-center"
+                      style={{ backgroundColor: row.no_plan > 0 ? '#FFE4E1' : 'transparent' }}
+                    >
+                      {row.no_plan.toLocaleString()}
+                    </td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_5_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_6_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_7_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_9_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_11_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.plan_14_99.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.group_a.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{row.group_b.toLocaleString()}</td>
+                    <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center font-semibold">{row.total.toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
