@@ -398,11 +398,11 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
 
       // Draw tiles/boxes for plan types and activations
-      const tileWidth = 38;
-      const tileHeight = 16;
-      const tileGap = 5;
+      const tileWidth = 37;
+      const tileHeight = 14;
+      const tileGap = 3;
       let currentX = M;
-      let currentY = 22;
+      const currentY = 22;
 
       const planTiles = [
         { label: 'No Plan', value: totals.no_plan, color: '#FF0000' },
@@ -414,71 +414,34 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         { label: '€14.99', value: totals.plan_14_99, color: '#46286E' },
       ];
 
-      planTiles.forEach((tile, index) => {
-        // Check if we need to wrap to next line
-        if (currentX + tileWidth > W - M) {
-          currentX = M;
-          currentY += tileHeight + tileGap;
-        }
+      planTiles.forEach((tile) => {
+        // Draw tile background (white)
+        pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(220, 215, 210);
+        pdf.setLineWidth(0.1);
+        pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'FD');
 
-        // Convert hex color to RGB
+        // Draw colored dot
         const hex = tile.color.replace('#', '');
         const r = parseInt(hex.substring(0, 2), 16) || 148;
         const g = parseInt(hex.substring(2, 4), 16) || 163;
         const b = parseInt(hex.substring(4, 6), 16) || 184;
-
-        // Draw tile background
         pdf.setFillColor(r, g, b);
-        pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'F');
-        
-        // Draw tile border
-        pdf.setDrawColor(220, 215, 210);
-        pdf.setLineWidth(0.3);
-        pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'S');
+        pdf.circle(currentX + 5, currentY + 5, 1.5, 'F');
 
-        // Draw text
-        pdf.setTextColor(255, 255, 255);
+        // Draw label text
+        pdf.setTextColor(100, 116, 139);
         pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(tile.label, currentX + 8, currentY + 5.5);
+
+        // Draw value text
+        pdf.setTextColor(33, 38, 78);
+        pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(tile.label, currentX + tileWidth / 2, currentY + 6, { align: 'center' });
-        pdf.setFontSize(8);
-        pdf.text(tile.value.toLocaleString(), currentX + tileWidth / 2, currentY + 12, { align: 'center' });
+        pdf.text(tile.value.toLocaleString(), currentX + 8, currentY + 11);
 
         currentX += tileWidth + tileGap;
-      });
-
-      // Draw group tiles
-      const groupTileWidth = 55;
-      const groupTiles = [
-        { label: 'Plan < €6.99', value: totals.group_a, color: '#08DC7D' },
-        { label: 'Plan > €6.99', value: totals.group_b, color: '#245BC1' },
-        { label: 'Total', value: totals.total, color: '#46286E' },
-      ];
-
-      currentX = M;
-      currentY += tileHeight + tileGap + 5;
-
-      groupTiles.forEach((tile, index) => {
-        const hex = tile.color.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16) || 148;
-        const g = parseInt(hex.substring(2, 4), 16) || 163;
-        const b = parseInt(hex.substring(4, 6), 16) || 184;
-
-        pdf.setFillColor(r, g, b);
-        pdf.roundedRect(currentX, currentY, groupTileWidth, tileHeight, 2, 2, 'F');
-        
-        pdf.setDrawColor(220, 215, 210);
-        pdf.setLineWidth(0.3);
-        pdf.roundedRect(currentX, currentY, groupTileWidth, tileHeight, 2, 2, 'S');
-
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(7);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(tile.label, currentX + groupTileWidth / 2, currentY + 6, { align: 'center' });
-        pdf.setFontSize(8);
-        pdf.text(tile.value.toLocaleString(), currentX + groupTileWidth / 2, currentY + 12, { align: 'center' });
-
-        currentX += groupTileWidth + tileGap;
       });
 
       const tableStartY = currentY + tileHeight + 8;
