@@ -411,6 +411,16 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         pdf.text(`Page ${page} / ${pageCount}`, W - M, H - 6, { align: 'right' });
       };
 
+      // Helper function to convert hex to RGB
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+      };
+
       // Header
       pdf.setFillColor(33, 38, 78);
       pdf.rect(0, 0, W, 18, 'F');
@@ -421,6 +431,17 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       pdf.setFontSize(8.5);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
+      
+      // Add 'Total Activation with Plans' in gold color
+      const totalWithPlans = totals.group_a + totals.group_b;
+      const gold = hexToRgb('#FFD700');
+      pdf.setTextColor(gold.r, gold.g, gold.b);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Total Activation with Plans: ${totalWithPlans.toLocaleString()}`, W - M, 12, { align: 'right' });
+      
+      // Reset text color for exported time
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'normal');
       pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
 
       // Draw tiles/boxes for plan types and activations
@@ -441,36 +462,35 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       ];
 
       planTiles.forEach((tile) => {
-        // Draw tile background (white)
-        pdf.setFillColor(255, 255, 255);
+        // Draw tile background
+        const tileColor = hexToRgb(tile.color);
+        pdf.setFillColor(tileColor.r, tileColor.g, tileColor.b);
         pdf.setDrawColor(220, 215, 210);
         pdf.setLineWidth(0.1);
         pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'FD');
 
-        // Draw colored dot
-        const hex = tile.color.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16) || 148;
-        const g = parseInt(hex.substring(2, 4), 16) || 163;
-        const b = parseInt(hex.substring(4, 6), 16) || 184;
-        pdf.setFillColor(r, g, b);
-        pdf.circle(currentX + 5, currentY + 5, 1.5, 'F');
-
-        // Draw label text
-        pdf.setTextColor(100, 116, 139);
+        // Draw label text (white for visibility on colored background
+        pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(tile.label, currentX + 8, currentY + 5.5);
+        pdf.text(tile.label, currentX + 4, currentY + 5.5);
 
         // Draw value text
-        pdf.setTextColor(33, 38, 78);
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(tile.value.toLocaleString(), currentX + 8, currentY + 11);
+        pdf.text(tile.value.toLocaleString(), currentX + 4, currentY + 11);
 
         currentX += tileWidth + tileGap;
       });
 
       const tableStartY = currentY + tileHeight + 8;
+
+      const cellColors = {
+        noPlan: hexToRgb('#FFE4E1'),
+        less699: hexToRgb('#D4F5E4'),
+        greater699: hexToRgb('#D4E5F5'),
+        total: hexToRgb('#E5E5F5'),
+      };
 
       autoTable(pdf, {
         head: [[
@@ -505,20 +525,33 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
         alternateRowStyles: { fillColor: [250, 248, 245] },
         styles: { font: 'helvetica' },
-        tableWidth: 'auto',
+        tableWidth: 'wrap',
+        didDrawCell: (data: any) => {
+          if (data.section === 'body') {
+            if (data.column.index === 1 && Number(sortedRetailerRows[data.row.index].no_plan > 0)) {
+              data.cell.styles.fillColor = [cellColors.noPlan.r, cellColors.noPlan.g, cellColors.noPlan.b];
+            } else if (data.column.index === 8) {
+              data.cell.styles.fillColor = [cellColors.less699.r, cellColors.less699.g, cellColors.less699.b];
+            } else if (data.column.index === 9) {
+              data.cell.styles.fillColor = [cellColors.greater699.r, cellColors.greater699.g, cellColors.greater699.b];
+            } else if (data.column.index === 10) {
+              data.cell.styles.fillColor = [cellColors.total.r, cellColors.total.g, cellColors.total.b];
+            }
+          }
+        },
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 70, overflow: 'linebreak' }, // Increased retailer ID width
-          1: { cellWidth: 15 },
-          2: { cellWidth: 15 },
-          3: { cellWidth: 15 },
-          4: { cellWidth: 15 },
-          5: { cellWidth: 15 },
-          6: { cellWidth: 15 },
-          7: { cellWidth: 15 },
-          8: { cellWidth: 20 },
-          9: { cellWidth: 20 },
-          10: { cellWidth: 20 },
+          0: { cellWidth: 'auto', overflow: 'linebreak' }, // Increased retailer ID width
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 'auto' },
+          3: { cellWidth: 'auto' },
+          4: { cellWidth: 'auto' },
+          5: { cellWidth: 'auto' },
+          6: { cellWidth: 'auto' },
+          7: { cellWidth: 'auto' },
+          8: { cellWidth: 'auto' },
+          9: { cellWidth: 'auto' },
+          10: { cellWidth: 'auto' },
         },
       });
 
