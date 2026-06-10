@@ -346,6 +346,31 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       const zoneLbl = zone || 'ALL';
       const regionLbl = region || 'ITALY';
 
+      // Calculate totals for tiles
+      const totals = sortedRetailerRows.reduce((acc, row) => ({
+        no_plan: acc.no_plan + row.no_plan,
+        plan_5_99: acc.plan_5_99 + row.plan_5_99,
+        plan_6_99: acc.plan_6_99 + row.plan_6_99,
+        plan_7_99: acc.plan_7_99 + row.plan_7_99,
+        plan_9_99: acc.plan_9_99 + row.plan_9_99,
+        plan_11_99: acc.plan_11_99 + row.plan_11_99,
+        plan_14_99: acc.plan_14_99 + row.plan_14_99,
+        group_a: acc.group_a + row.group_a,
+        group_b: acc.group_b + row.group_b,
+        total: acc.total + row.total,
+      }), {
+        no_plan: 0,
+        plan_5_99: 0,
+        plan_6_99: 0,
+        plan_7_99: 0,
+        plan_9_99: 0,
+        plan_11_99: 0,
+        plan_14_99: 0,
+        group_a: 0,
+        group_b: 0,
+        total: 0,
+      });
+
       const footerHook = (_data: any) => {
         const pageCount = pdf.internal.getNumberOfPages();
         const page = pdf.internal.getCurrentPageInfo().pageNumber;
@@ -360,6 +385,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         pdf.text(`Page ${page} / ${pageCount}`, W - M, H - 6, { align: 'right' });
       };
 
+      // Header
       pdf.setFillColor(33, 38, 78);
       pdf.rect(0, 0, W, 18, 'F');
       pdf.setTextColor(255, 255, 255);
@@ -370,6 +396,92 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
       pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
+
+      // Draw tiles/boxes for plan types and activations
+      const tileWidth = 38;
+      const tileHeight = 16;
+      const tileGap = 5;
+      let currentX = M;
+      let currentY = 22;
+
+      const planTiles = [
+        { label: 'No Plan', value: totals.no_plan, color: '#FF0000' },
+        { label: '€5.99', value: totals.plan_5_99, color: '#FFDD64' },
+        { label: '€6.99', value: totals.plan_6_99, color: '#FFA500' },
+        { label: '€7.99', value: totals.plan_7_99, color: '#08DC7D' },
+        { label: '€9.99', value: totals.plan_9_99, color: '#00CED1' },
+        { label: '€11.99', value: totals.plan_11_99, color: '#245BC1' },
+        { label: '€14.99', value: totals.plan_14_99, color: '#46286E' },
+      ];
+
+      planTiles.forEach((tile, index) => {
+        // Check if we need to wrap to next line
+        if (currentX + tileWidth > W - M) {
+          currentX = M;
+          currentY += tileHeight + tileGap;
+        }
+
+        // Convert hex color to RGB
+        const hex = tile.color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 148;
+        const g = parseInt(hex.substring(2, 4), 16) || 163;
+        const b = parseInt(hex.substring(4, 6), 16) || 184;
+
+        // Draw tile background
+        pdf.setFillColor(r, g, b);
+        pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'F');
+        
+        // Draw tile border
+        pdf.setDrawColor(220, 215, 210);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(currentX, currentY, tileWidth, tileHeight, 2, 2, 'S');
+
+        // Draw text
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(tile.label, currentX + tileWidth / 2, currentY + 6, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.text(tile.value.toLocaleString(), currentX + tileWidth / 2, currentY + 12, { align: 'center' });
+
+        currentX += tileWidth + tileGap;
+      });
+
+      // Draw group tiles
+      const groupTileWidth = 55;
+      const groupTiles = [
+        { label: 'Plan < €6.99', value: totals.group_a, color: '#08DC7D' },
+        { label: 'Plan > €6.99', value: totals.group_b, color: '#245BC1' },
+        { label: 'Total', value: totals.total, color: '#46286E' },
+      ];
+
+      currentX = M;
+      currentY += tileHeight + tileGap + 5;
+
+      groupTiles.forEach((tile, index) => {
+        const hex = tile.color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 148;
+        const g = parseInt(hex.substring(2, 4), 16) || 163;
+        const b = parseInt(hex.substring(4, 6), 16) || 184;
+
+        pdf.setFillColor(r, g, b);
+        pdf.roundedRect(currentX, currentY, groupTileWidth, tileHeight, 2, 2, 'F');
+        
+        pdf.setDrawColor(220, 215, 210);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(currentX, currentY, groupTileWidth, tileHeight, 2, 2, 'S');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(tile.label, currentX + groupTileWidth / 2, currentY + 6, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.text(tile.value.toLocaleString(), currentX + groupTileWidth / 2, currentY + 12, { align: 'center' });
+
+        currentX += groupTileWidth + tileGap;
+      });
+
+      const tableStartY = currentY + tileHeight + 8;
 
       autoTable(pdf, {
         head: [[
@@ -398,26 +510,26 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           row.group_b.toLocaleString(),
           row.total.toLocaleString(),
         ]),
-        startY: 24,
+        startY: tableStartY,
         theme: 'grid',
         headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold' },
         bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
         alternateRowStyles: { fillColor: [250, 248, 245] },
-        styles: { font: 'helvetica', overflow: 'linebreak' },
+        styles: { font: 'helvetica' },
         tableWidth: 'auto',
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 40 },
-          1: { cellWidth: 20 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 20 },
-          5: { cellWidth: 20 },
-          6: { cellWidth: 20 },
-          7: { cellWidth: 20 },
-          8: { cellWidth: 25 },
-          9: { cellWidth: 25 },
-          10: { cellWidth: 25 },
+          0: { cellWidth: 70, overflow: 'linebreak' }, // Increased retailer ID width
+          1: { cellWidth: 15 },
+          2: { cellWidth: 15 },
+          3: { cellWidth: 15 },
+          4: { cellWidth: 15 },
+          5: { cellWidth: 15 },
+          6: { cellWidth: 15 },
+          7: { cellWidth: 15 },
+          8: { cellWidth: 20 },
+          9: { cellWidth: 20 },
+          10: { cellWidth: 20 },
         },
       });
 
