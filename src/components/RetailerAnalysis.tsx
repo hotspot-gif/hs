@@ -55,12 +55,21 @@ function CTooltip({ active, payload, label }: any) {
     'po_deduction', 'clawback', 'renewal_impact', 'total_ded',
     'pi_raw', 'add_gara', 'pi_total'
   ];
+  // Fields that are counts, not currency
+  const countFields = [
+    'P-IN ≤€6.99', 'P-IN >€6.99', 'NEW ≤€6.99', 'NEW >€6.99',
+    'pi_l6', 'pi_g6', 'np_l6', 'np_g6'
+  ];
 
   return (
     <div className="bg-white shadow-xl rounded-lg p-3 border border-gray-100 text-xs">
       <p className="font-semibold text-[#21264E] mb-1">{label}</p>
       {payload.map((p: any, i: number) => {
-        const isCurrency = currencyFields.some(f => 
+        const isCount = countFields.some(f => 
+          p.name?.toLowerCase().includes(f.toLowerCase()) || 
+          p.dataKey?.toString().toLowerCase().includes(f.toLowerCase())
+        );
+        const isCurrency = !isCount && currencyFields.some(f => 
           p.name?.toLowerCase().includes(f.toLowerCase()) || 
           p.dataKey?.toString().toLowerCase().includes(f.toLowerCase())
         );
@@ -69,7 +78,7 @@ function CTooltip({ active, payload, label }: any) {
           <p key={i} style={{ color: p.color }} className="flex items-center justify-between gap-4">
             <span>{p.name}</span>
             <span className="font-medium">
-              {isCurrency ? fmt(p.value) : fmtN(p.value)}
+              {isCount ? fmtN(p.value) : isCurrency ? fmt(p.value) : fmtN(p.value)}
             </span>
           </p>
         );
@@ -687,7 +696,7 @@ export default function RetailerAnalysis({ summary, monthlyData }: Props) {
           <BarChart data={planTrends}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={{ fill: '#21264E', fontSize: 10 }} interval="preserveStartEnd" />
-            <YAxis tickFormatter={fmtShort} tick={{ fill: '#21264E', fontSize: 11 }} />
+            <YAxis tickFormatter={fmtN} tick={{ fill: '#21264E', fontSize: 11 }} />
             <Tooltip content={<CTooltip />} />
             <Legend />
             <Bar dataKey="pi_l6" name="P-IN ≤€6.99" stackId="a" fill={PLAN_COLORS.pi_l6} isAnimationActive={false} />
@@ -704,7 +713,7 @@ export default function RetailerAnalysis({ summary, monthlyData }: Props) {
           <BarChart data={piComparison}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={{ fill: '#21264E', fontSize: 10 }} interval="preserveStartEnd" />
-            <YAxis tickFormatter={fmtShort} tick={{ fill: '#21264E', fontSize: 11 }} />
+            <YAxis tickFormatter={fmtN} tick={{ fill: '#21264E', fontSize: 11 }} />
             <Tooltip content={<CTooltip />} />
             <Legend />
             <Bar dataKey="pi_l6" name="P-IN ≤€6.99" fill={PLAN_COLORS.pi_l6} radius={[4, 4, 0, 0]} isAnimationActive={false} />
@@ -719,7 +728,7 @@ export default function RetailerAnalysis({ summary, monthlyData }: Props) {
           <BarChart data={newComparison}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={{ fill: '#21264E', fontSize: 10 }} interval="preserveStartEnd" />
-            <YAxis tickFormatter={fmtShort} tick={{ fill: '#21264E', fontSize: 11 }} />
+            <YAxis tickFormatter={fmtN} tick={{ fill: '#21264E', fontSize: 11 }} />
             <Tooltip content={<CTooltip />} />
             <Legend />
             <Bar dataKey="np_l6" name="NEW ≤€6.99" fill={PLAN_COLORS.np_l6} radius={[4, 4, 0, 0]} isAnimationActive={false} />
@@ -748,7 +757,7 @@ export default function RetailerAnalysis({ summary, monthlyData }: Props) {
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => fmt(Number(v))} />
+                  <Tooltip formatter={(v) => fmtN(Number(v))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
