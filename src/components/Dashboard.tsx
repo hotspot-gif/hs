@@ -10,13 +10,14 @@ import KPIAnalysis from '@/components/KPIAnalysis';
 import ISDM from '@/components/ISDM';
 import CoverageView from '@/components/CoverageView';
 import RetailerPerformanceReport from '@/components/RetailerPerformanceReport';
+import PlanActivationReport from '@/components/PlanActivationReport';
 import {
   LayoutDashboard, Upload, LogOut, Search, User, Building2, Shield, FileDown, ChevronLeft, ChevronRight, Users, TrendingUp, Globe, Menu, X, Trophy, Activity,
 } from 'lucide-react';
 import { generatePDF } from '@/utils/pdfExport';
 import { ALL_BRANCHES, BRANCH_TO_ZONES, normalizeBranch, NORTH_REGION, SOUTH_REGION } from '@/data/mockData';
 
-const VIEWS = { DASHBOARD: 'dashboard', KPI: 'kpi', ISDM: 'isdm', IMPORT: 'import', USERS: 'users', COVERAGE: 'coverage', RETAILER_PERFORMANCE: 'retailer_performance' } as const;
+const VIEWS = { DASHBOARD: 'dashboard', KPI: 'kpi', ISDM: 'isdm', IMPORT: 'import', USERS: 'users', COVERAGE: 'coverage', RETAILER_PERFORMANCE: 'retailer_performance', PLAN_ACTIVATION: 'plan_activation' } as const;
 type View = (typeof VIEWS)[keyof typeof VIEWS];
 
 export default function Dashboard() {
@@ -97,6 +98,12 @@ export default function Dashboard() {
   const [perfZone, setPerfZone] = useState('');
   const [perfBranches, setPerfBranches] = useState<string[]>([]);
   const [perfZones, setPerfZones] = useState<string[]>([]);
+  
+  const [planRegion, setPlanRegion] = useState('ITALY');
+  const [planBranch, setPlanBranch] = useState('');
+  const [planZone, setPlanZone] = useState('');
+  const [planBranches, setPlanBranches] = useState<string[]>([]);
+  const [planZones, setPlanZones] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user || user.role !== 'ZONE-MANAGER') return;
@@ -123,6 +130,10 @@ export default function Dashboard() {
       setPerfBranch(b);
       setPerfZone(z);
       setPerfRegion(r);
+      
+      setPlanBranch(b);
+      setPlanZone(z);
+      setPlanRegion(r);
     };
 
     if (assignedZone && assignedBranch) {
@@ -219,6 +230,76 @@ export default function Dashboard() {
       }
     });
   }, [perfBranch, perfRegion, perfZone, user]);
+  
+  // Fetch plan activation branches based on region
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('zone_coverage_summary')
+      .select('branch, region')
+      .limit(5000)
+      .then(({ data, error }: { data: any; error: any }) => {
+        if (error) {
+          console.error('Error fetching plan branches:', error);
+          return;
+        }
+        if (!data) return;
+
+        const uniqueBranches = [...new Set(data.map((row: any) => row.branch).filter(Boolean))] as string[];
+        let availableBranches = uniqueBranches;
+
+        if (user.role === 'ZONE-MANAGER') {
+          const b = normalizeBranch(user.branches?.[0] || '');
+          availableBranches = b ? [b] : [];
+        } else if (!['HS-ADMIN', 'COUNTRY-MANAGER', 'UK-ADMIN'].includes(user.role)) {
+          const userBranches = (user.branches || []).map(normalizeBranch);
+          availableBranches = uniqueBranches.filter((b: string) => userBranches.includes(normalizeBranch(b)));
+        }
+
+        if (planRegion === 'NORTH') {
+          availableBranches = availableBranches.filter(b => NORTH_REGION.includes(normalizeBranch(b)));
+        } else if (planRegion === 'SOUTH') {
+          availableBranches = availableBranches.filter(b => SOUTH_REGION.includes(normalizeBranch(b)));
+        }
+
+        setPlanBranches(availableBranches);
+      });
+  }, [user, planRegion]);
+
+  // Fetch plan activation zones based on branch or region
+  useEffect(() => {
+    if (user?.role === 'ZONE-MANAGER') {
+      const z = String(user.zone || '').trim();
+      setPlanZones(z ? [z] : []);
+      setPlanZone(z);
+      return;
+    }
+
+    let query = supabase
+      .from('zone_coverage_summary')
+      .select('zone')
+      .limit(5000);
+
+    if (planBranch) {
+      query = query.eq('branch', planBranch);
+    } else if (planRegion && planRegion !== 'ITALY') {
+      query = query.eq('region', planRegion);
+    }
+
+    query.then(({ data, error }) => {
+      if (error) {
+        console.error('Error fetching plan zones:', error);
+        return;
+      }
+      if (!data) return;
+
+      const uniqueZones = [...new Set(data.map((row: any) => row.zone).filter(Boolean))] as string[];
+      setPlanZones(uniqueZones);
+      if (planZone && !uniqueZones.includes(planZone)) {
+        setPlanZone('');
+      }
+    });
+  }, [planBranch, planRegion, planZone, user]);
 
   // Determine available branches based on role
   useEffect(() => {
@@ -756,6 +837,15 @@ export default function Dashboard() {
             <Activity size={20} />
             {(!sidebarCollapsed || mobileMenuOpen) && 'Retailer Performance'}
           </button>
+          <button
+            onClick={() => { setView(VIEWS.PLAN_ACTIVATION); setMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+              view === VIEWS.PLAN_ACTIVATION ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Activity size={20} />
+            {(!sidebarCollapsed || mobileMenuOpen) && 'Plan Activation Report'}
+          </button>
           {user?.role === 'HS-ADMIN' && (
             <button
               onClick={() => { setView(VIEWS.IMPORT); setMobileMenuOpen(false); }}
@@ -973,6 +1063,55 @@ export default function Dashboard() {
             </div>
           )}
 
+          {view === VIEWS.PLAN_ACTIVATION && (
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 min-w-[140px]">
+                <Globe size={16} className="text-[#21264E]" />
+                {isZoneManager ? (
+                  <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[140px]">
+                    {planRegion}
+                  </div>
+                ) : (
+                  <select
+                    value={planRegion}
+                    onChange={e => { setPlanRegion(e.target.value); setPlanBranch(''); setPlanZone(''); }}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                  >
+                    {hasAllBranchAccess ? (
+                      <>
+                        <option value="ITALY">ITALY (All)</option>
+                        <option value="NORTH">NORTH</option>
+                        <option value="SOUTH">SOUTH</option>
+                      </>
+                    ) : (
+                      <option value={planRegion}>{planRegion}</option>
+                    )}
+                  </select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 min-w-[180px] max-w-[220px]">
+                <Shield size={16} className="text-[#21264E]" />
+                {isZoneManager ? (
+                  <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[180px]">
+                    {planBranch || '—'}
+                  </div>
+                ) : (
+                  <select
+                    value={planBranch}
+                    onChange={e => { setPlanBranch(e.target.value); setPlanZone(''); }}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                  >
+                    <option value="">{planRegion === 'ITALY' ? 'All Branches' : `All ${planRegion} Branches`}</option>
+                    {planBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* DASHBOARD - Zone selector */}
           {view === VIEWS.DASHBOARD && (
             <div className="w-full md:w-auto flex items-center gap-2">
@@ -1011,6 +1150,28 @@ export default function Dashboard() {
                 >
                   <option value="">All Zones</option>
                   {perfZones.map(z => (
+                    <option key={z} value={z}>{z}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {view === VIEWS.PLAN_ACTIVATION && (
+            <div className="w-full md:w-auto flex items-center gap-2">
+              <Building2 size={16} className="text-[#21264E]" />
+              {isZoneManager ? (
+                <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold">
+                  {planZone || '—'}
+                </div>
+              ) : (
+                <select
+                  value={planZone}
+                  onChange={e => setPlanZone(e.target.value)}
+                  className="w-full md:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
+                >
+                  <option value="">All Zones</option>
+                  {planZones.map(z => (
                     <option key={z} value={z}>{z}</option>
                   ))}
                 </select>
@@ -1143,6 +1304,12 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-[#21264E] font-bold">
               <Activity size={18} />
               <span>Retailer Performance</span>
+            </div>
+          )}
+          {view === VIEWS.PLAN_ACTIVATION && (
+            <div className="flex items-center gap-2 text-[#21264E] font-bold">
+              <Activity size={18} />
+              <span>Plan Activation Report</span>
             </div>
           )}
 
@@ -1292,6 +1459,8 @@ export default function Dashboard() {
             <CoverageView user={user} />
           ) : view === VIEWS.RETAILER_PERFORMANCE ? (
             <RetailerPerformanceReport user={user} region={perfRegion} branch={perfBranch} zone={perfZone} />
+          ) : view === VIEWS.PLAN_ACTIVATION ? (
+            <PlanActivationReport user={user} region={planRegion} branch={planBranch} zone={planZone} />
           ) : view === VIEWS.KPI ? (
             <KPIAnalysis user={user} branch={kpiBranch} zone={kpiZone} region={kpiRegion} />
           ) : view === VIEWS.ISDM ? (
