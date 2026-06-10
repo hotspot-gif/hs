@@ -63,8 +63,17 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     key: 'zone',
     direction: 'asc',
   });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isZoneSelected = Boolean(zone);
+
+  useEffect(() => {
+    if (isZoneSelected) {
+      setSortConfig({ key: 'retailer_id', direction: 'asc' });
+    } else {
+      setSortConfig({ key: 'zone', direction: 'asc' });
+    }
+  }, [isZoneSelected]);
 
   useEffect(() => {
     setLoading(true);
@@ -224,10 +233,14 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     { name: '€14.99', value: totals.plan_14_99, color: '#46286E' },
   ], [totals]);
 
-  const groupPieChartData = useMemo(() => [
-    { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D' },
-    { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1' },
-  ], [totals]);
+  const groupPieChartData = useMemo(() => {
+    const totalActivation = totals.no_plan + totals.group_a + totals.group_b;
+    return [
+      { name: 'Plan Less than €6.99', value: totals.group_a, color: '#08DC7D', total: totalActivation },
+      { name: 'Plans Greater than €6.99', value: totals.group_b, color: '#245BC1', total: totalActivation },
+      { name: 'No Plan', value: totals.no_plan, color: '#FF0000', total: totalActivation },
+    ];
+  }, [totals]);
 
   const noPlanZoneChartData = useMemo(() => {
     return rows.map(row => ({
@@ -264,22 +277,29 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   }, [rows, sortConfig]);
 
   const sortedRetailerRows = useMemo(() => {
-    if (!sortConfig) return retailerRows;
-    return [...retailerRows].sort((a, b) => {
-      const aVal = a[sortConfig.key as keyof RetailerPlanData];
-      const bVal = b[sortConfig.key as keyof RetailerPlanData];
-      
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
+    let sorted = [...retailerRows];
+    if (sortConfig) {
+      sorted.sort((a, b) => {
+        const aVal = a[sortConfig.key as keyof RetailerPlanData];
+        const bVal = b[sortConfig.key as keyof RetailerPlanData];
+        
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aVal.localeCompare(bVal) 
+            : bVal.localeCompare(aVal);
+        }
+        
         return sortConfig.direction === 'asc' 
-          ? aVal.localeCompare(bVal) 
-          : bVal.localeCompare(aVal);
-      }
-      
-      return sortConfig.direction === 'asc' 
-        ? (aVal as number) - (bVal as number) 
-        : (bVal as number) - (aVal as number);
-    });
-  }, [retailerRows, sortConfig]);
+          ? (aVal as number) - (bVal as number) 
+          : (bVal as number) - (aVal as number);
+      });
+    }
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      sorted = sorted.filter(row => row.retailer_id.toLowerCase().includes(lowerQuery));
+    }
+    return sorted;
+  }, [retailerRows, sortConfig, searchQuery]);
 
   const handleExportExcel = useCallback(async () => {
     if (sortedRetailerRows.length === 0) return;
@@ -612,7 +632,10 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
                   innerRadius={62}
                   outerRadius={100}
                   paddingAngle={2}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, value, total }) => {
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(0) : 0;
+                    return `${name} ${percentage}%`;
+                  }}
                 >
                   {groupPieChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -653,9 +676,18 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       {/* Data Table */}
       <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex flex-col gap-2">
             <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : "Zone-wise Breakdown"}</h2>
             <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : "Detailed plan activation data per zone."}</p>
+            {isZoneSelected && (
+              <input
+                type="text"
+                placeholder="Search Retailer ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#245BC1] focus:border-transparent"
+              />
+            )}
           </div>
           {isZoneSelected && (
             <div className="flex flex-wrap gap-2">
