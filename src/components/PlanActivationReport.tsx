@@ -57,6 +57,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   const [rows, setRows] = useState<PlanData[]>([]);
   const [retailerRows, setRetailerRows] = useState<RetailerPlanData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof PlanData | keyof RetailerPlanData; direction: 'asc' | 'desc' } | null>({
     key: 'zone',
     direction: 'asc',
@@ -279,6 +281,155 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     });
   }, [retailerRows, sortConfig]);
 
+  const handleExportExcel = useCallback(async () => {
+    if (sortedRetailerRows.length === 0) return;
+    setExportingExcel(true);
+    try {
+      const XLSX: any = await import('xlsx');
+      const branchLbl = (branch || 'ALL').replace('LMIT-HS-', '') || 'ALL';
+      const zoneLbl = zone || 'ALL';
+      const regionLbl = region || 'ITALY';
+      const nowStr = new Date().toLocaleString('en-GB');
+
+      const summarySheet = XLSX.utils.json_to_sheet([
+        { Key: 'Exported At', Value: nowStr },
+        { Key: 'Region', Value: regionLbl },
+        { Key: 'Branch', Value: branchLbl },
+        { Key: 'Zone', Value: zoneLbl },
+        { Key: 'Total Retailers', Value: sortedRetailerRows.length },
+        { Key: 'Exported By', Value: user?.full_name || user?.username || user?.email || '' },
+      ]);
+
+      const dataSheet = XLSX.utils.json_to_sheet(
+        sortedRetailerRows.map((row) => ({
+          'Retailer ID': row.retailer_id,
+          'No Plan': row.no_plan,
+          '€5.99': row.plan_5_99,
+          '€6.99': row.plan_6_99,
+          '€7.99': row.plan_7_99,
+          '€9.99': row.plan_9_99,
+          '€11.99': row.plan_11_99,
+          '€14.99': row.plan_14_99,
+          'Plan < €6.99': row.group_a,
+          'Plan > €6.99': row.group_b,
+          'Total': row.total,
+        }))
+      );
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+      XLSX.utils.book_append_sheet(wb, dataSheet, 'Plan Activation');
+
+      const filename = `plan-activation-${branchLbl}-${zoneLbl}`.replace(/\s+/g, '_') + '.xlsx';
+      XLSX.writeFile(wb, filename, { compression: true });
+    } catch (e) {
+      console.error('Export Excel failed:', e);
+    } finally {
+      setExportingExcel(false);
+    }
+  }, [branch, sortedRetailerRows, region, user, zone]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (sortedRetailerRows.length === 0) return;
+    setExportingPdf(true);
+    try {
+      const jsPDFModule: any = await import('jspdf');
+      const autoTableModule: any = await import('jspdf-autotable');
+      const jsPDF = jsPDFModule.default;
+      const autoTable = autoTableModule.default ?? autoTableModule;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const W = 297;
+      const H = 210;
+      const M = 10;
+      const nowStr = new Date().toLocaleString('en-GB');
+      const branchLbl = (branch || 'ALL').replace('LMIT-HS-', '') || 'ALL';
+      const zoneLbl = zone || 'ALL';
+      const regionLbl = region || 'ITALY';
+
+      const footerHook = (_data: any) => {
+        const pageCount = pdf.internal.getNumberOfPages();
+        const page = pdf.internal.getCurrentPageInfo().pageNumber;
+        pdf.setDrawColor(220, 215, 210);
+        pdf.setLineWidth(0.2);
+        pdf.line(M, H - 10, W - M, H - 10);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(140, 140, 150);
+        pdf.text('CONFIDENTIAL — internal plan activation export.', M, H - 6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Page ${page} / ${pageCount}`, W - M, H - 6, { align: 'right' });
+      };
+
+      pdf.setFillColor(33, 38, 78);
+      pdf.rect(0, 0, W, 18, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Plan Activation Details', M, 12.5);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
+      pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
+
+      autoTable(pdf, {
+        head: [[
+          'Retailer ID',
+          'No Plan',
+          '€5.99',
+          '€6.99',
+          '€7.99',
+          '€9.99',
+          '€11.99',
+          '€14.99',
+          '< €6.99',
+          '> €6.99',
+          'Total'
+        ]],
+        body: sortedRetailerRows.map((row) => [
+          row.retailer_id,
+          row.no_plan.toLocaleString(),
+          row.plan_5_99.toLocaleString(),
+          row.plan_6_99.toLocaleString(),
+          row.plan_7_99.toLocaleString(),
+          row.plan_9_99.toLocaleString(),
+          row.plan_11_99.toLocaleString(),
+          row.plan_14_99.toLocaleString(),
+          row.group_a.toLocaleString(),
+          row.group_b.toLocaleString(),
+          row.total.toLocaleString(),
+        ]),
+        startY: 24,
+        theme: 'grid',
+        headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold' },
+        bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [250, 248, 245] },
+        styles: { font: 'helvetica', overflow: 'linebreak' },
+        tableWidth: 'auto',
+        didDrawPage: footerHook,
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 20 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 20 },
+          8: { cellWidth: 25 },
+          9: { cellWidth: 25 },
+          10: { cellWidth: 25 },
+        },
+      });
+
+      const filename = `plan-activation-${branchLbl}-${zoneLbl}`.replace(/\s+/g, '_') + '.pdf';
+      pdf.save(filename);
+    } catch (e) {
+      console.error('Export PDF failed:', e);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [branch, sortedRetailerRows, region, zone]);
+
   if (!loading && rows.length === 0) {
     return (
       <div className="flex min-h-[480px] items-center justify-center p-8">
@@ -426,9 +577,33 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
 
       {/* Data Table */}
       <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : "Zone-wise Breakdown"}</h2>
-          <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : "Detailed plan activation data per zone."}</p>
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : "Zone-wise Breakdown"}</h2>
+            <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : "Detailed plan activation data per zone."}</p>
+          </div>
+          {isZoneSelected && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={exportingPdf || sortedRetailerRows.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#F04438] text-white hover:bg-[#d93a30] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FileDown size={16} />
+                {exportingPdf ? 'Exporting...' : 'PDF - Adobe Acrobat'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={exportingExcel || sortedRetailerRows.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#16A34A] text-white hover:bg-[#12843d] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FileSpreadsheet size={16} />
+                {exportingExcel ? 'Exporting...' : 'Excel - MS Excel'}
+              </button>
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
