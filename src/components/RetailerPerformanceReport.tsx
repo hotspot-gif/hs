@@ -579,21 +579,21 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {lastUpdated && (
+        <div className="flex justify-end">
+          <div className="rounded-full border border-[#21264E]/10 bg-white px-4 py-1.5 text-xs font-semibold text-[#21264E] shadow-sm">
+            Last Updated: {lastUpdated}
+          </div>
+        </div>
+      )}
       <div className="rounded-3xl border border-[#21264E]/10 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#245bc1]">Retailer Performance Report</p>
             <h1 className="mt-2 text-2xl font-bold text-[#21264E]">Monthly Trend & Priority Classification</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <p className="text-sm text-slate-500">
-                Monitoring current MTD performance against the rolling 3-month retailer average using zone coverage summary data.
-              </p>
-              {lastUpdated && (
-                <p className="text-sm text-[#21264E] ml-auto">
-                  <span className="font-semibold">Last Updated:</span> {lastUpdated}
-                </p>
-              )}
-            </div>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              Monitoring current MTD performance against the rolling 3-month retailer average using zone coverage summary data.
+            </p>
           </div>
           <div className="grid gap-2 grid-cols-1 md:grid-cols-3">
             <div className="rounded-2xl bg-[#21264E] px-4 py-3 text-white shadow-sm">
