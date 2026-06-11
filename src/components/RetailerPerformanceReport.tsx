@@ -174,11 +174,35 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     key: 'avg_mtd',
     direction: 'desc',
   });
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isZoneSelected = Boolean(zone);
 
   useEffect(() => {
     setLoading(true);
+    
+    // Fetch last updated date
+    supabase
+      .from('zone_coverage_summary')
+      .select('last_updated')
+      .limit(1)
+      .then(({ data: lastUpdatedData, error: lastUpdatedError }) => {
+        if (!lastUpdatedError && lastUpdatedData && lastUpdatedData.length > 0) {
+          const dateStr = lastUpdatedData[0].last_updated;
+          if (dateStr) {
+            const date = new Date(dateStr);
+            // Subtract 1 day
+            date.setDate(date.getDate() - 1);
+            // Format as DD-MMM-YYYY
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            setLastUpdated(`${day}-${month}-${year}`);
+          }
+        }
+      });
+    
     let summaryQuery = supabase.from('zone_coverage_summary').select('*');
 
     if (region && region !== 'ITALY') {
@@ -555,6 +579,15 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {/* Last Updated Section */}
+      {lastUpdated && (
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-6 shadow-sm">
+          <p className="text-sm text-[#21264E] text-right">
+            <span className="font-semibold">Last Updated:</span> {lastUpdated}
+          </p>
+        </div>
+      )}
+      
       <div className="rounded-3xl border border-[#21264E]/10 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

@@ -89,6 +89,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           const dateStr = lastUpdatedData[0].last_updated;
           if (dateStr) {
             const date = new Date(dateStr);
+            // Subtract 1 day
+            date.setDate(date.getDate() - 1);
             // Format as DD-MMM-YYYY
             const day = date.getDate().toString().padStart(2, '0');
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -607,8 +609,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     <div className="p-4 md:p-6 space-y-6">
       {/* Last Updated Section */}
       {lastUpdated && (
-        <div className="rounded-2xl border border-[#21264E]/10 bg-[#f0f9ff] p-4 shadow-sm">
-          <p className="text-sm text-[#21264E]">
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-6 shadow-sm">
+          <p className="text-sm text-[#21264E] text-right">
             <span className="font-semibold">Last Updated:</span> {lastUpdated}
           </p>
         </div>
