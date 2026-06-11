@@ -53,6 +53,38 @@ interface RetailerPlanData {
   total: number;
 }
 
+type MonthInfo = {
+  key: string;
+  aliases: string[];
+  label: string;
+  offset: number;
+};
+
+const MONTH_KEYS: MonthInfo[] = [
+  { key: 'm-3', aliases: ['m-3', 'm_3', 'm3', 'm_03'], label: '3 months ago', offset: -3 },
+  { key: 'm-2', aliases: ['m-2', 'm_2', 'm2', 'm_02'], label: '2 months ago', offset: -2 },
+  { key: 'm-1', aliases: ['m-1', 'm_1', 'm1', 'm_01'], label: '1 month ago', offset: -1 },
+  { key: 'm0', aliases: ['m0', 'm_0', 'm00', 'current_mtd', 'current_month'], label: 'Current MTD', offset: 0 },
+];
+
+const toNumber = (value: unknown) => {
+  if (typeof value === 'number') return Number(value);
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/,/g, ''));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+const fieldValue = (row: Record<string, unknown>, aliases: string[]) => {
+  for (const alias of aliases) {
+    if (row[alias] !== undefined && row[alias] !== null) {
+      return toNumber(row[alias]);
+    }
+  }
+  return 0;
+};
+
 export default function PlanActivationReport({ region, branch, zone, user }: PlanActivationReportProps) {
   const [rows, setRows] = useState<PlanData[]>([]);
   const [retailerRows, setRetailerRows] = useState<RetailerPlanData[]>([]);
@@ -231,6 +263,28 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       plan_11_99: 0,
       plan_14_99: 0,
     });
+  }, [rows]);
+
+  // Calculate ARPU
+  const arpuData = useMemo(() => {
+    let totalRevenue = 0;
+    let totalM0 = 0;
+
+    rows.forEach((row: Record<string, unknown>) => {
+      const plan599 = Number(row.plan_5_99 || 0);
+      const plan699 = Number(row.plan_6_99 || 0);
+      const plan799 = Number(row.plan_7_99 || 0);
+      const plan999 = Number(row.plan_9_99 || 0);
+      const plan1199 = Number(row.plan_11_99 || 0);
+      const plan1499 = Number(row.plan_14_99 || 0);
+      const m0 = fieldValue(row, MONTH_KEYS.find((m: MonthInfo) => m.offset === 0)?.aliases || []);
+
+      totalRevenue += (plan599 * 5.99) + (plan699 * 6.99) + (plan799 * 7.99) + (plan999 * 9.99) + (plan1199 * 11.99) + (plan1499 * 14.99);
+      totalM0 += m0;
+    });
+
+    const arpu = totalM0 > 0 ? totalRevenue / totalM0 : 0;
+    return { arpu, totalRevenue, totalM0 };
   }, [rows]);
 
   const plansShare = useMemo(() => {
@@ -641,7 +695,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Activations</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.total.toLocaleString()}</p>
@@ -662,6 +716,10 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Top Plan</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">{topPlan.name}</p>
           <p className="text-sm text-slate-500">{topPlan.value.toLocaleString()}</p>
+        </div>
+        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFD700', borderLeftWidth: '4px' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">ARPU (Avg Revenue per User)</p>
+          <p className="mt-4 text-3xl font-bold text-[#21264E]">€{arpuData.arpu.toFixed(2)}</p>
         </div>
       </div>
 
