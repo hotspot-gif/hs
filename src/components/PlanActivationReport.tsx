@@ -100,6 +100,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isZoneSelected = Boolean(zone);
+  const isBranchSelected = Boolean(branch);
+  const isRegionSelected = Boolean(region) && region !== 'ITALY';
 
   useEffect(() => {
     if (isZoneSelected) {
@@ -334,6 +336,25 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       no_plan: row.no_plan,
       with_plans: row.group_a + row.group_b,
     })).sort((a, b) => b.no_plan - a.no_plan).slice(0, 10);
+  }, [rows]);
+
+  const noPlanBranchChartData = useMemo(() => {
+    // Group rows by branch and sum no_plan and with_plans
+    const branchMap = new Map<string, { no_plan: number; with_plans: number }>();
+    rows.forEach(row => {
+      const branchName = row.branch || 'Unknown Branch';
+      if (!branchMap.has(branchName)) {
+        branchMap.set(branchName, { no_plan: 0, with_plans: 0 });
+      }
+      const entry = branchMap.get(branchName)!;
+      entry.no_plan += row.no_plan;
+      entry.with_plans += row.group_a + row.group_b;
+    });
+    // Convert map to array and sort
+    return Array.from(branchMap.entries())
+      .map(([branch, data]) => ({ branch, no_plan: data.no_plan, with_plans: data.with_plans }))
+      .sort((a, b) => b.no_plan - a.no_plan)
+      .slice(0, 10);
   }, [rows]);
 
   const handleSort = (key: any) => {
@@ -789,28 +810,54 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         </section>
       </div>
 
-      {/* No Plan by Zone - Only show if no zone selected */}
+      {/* No Plan Charts */}
       {!isZoneSelected && (
         <div className="grid gap-4 grid-cols-1">
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[#21264E]">No Plan by Zone</h2>
-              <p className="text-sm text-slate-500">Zones with the highest number of retailers without a plan (top 10).</p>
-            </div>
-            <div className="h-[340px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={noPlanZoneChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} stackOffset="expand">
-                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                  <XAxis dataKey="zone" tick={{ fill: '#334155', fontSize: 12 }} />
-                  <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                  <Legend />
-                  <Bar dataKey="with_plans" name="With Plans" fill="#245BC1" stackId="a" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="no_plan" name="No Plans" fill="#FF0000" stackId="a" radius={[0, 0, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
+          {/* No Plan by Branch - when region selected or country level */}
+          {isRegionSelected || (!isBranchSelected && !isRegionSelected) ? (
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">No Plan by Branch</h2>
+                <p className="text-sm text-slate-500">Branches with the highest number of retailers without a plan (top 10).</p>
+              </div>
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={noPlanBranchChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} stackOffset="expand">
+                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                    <XAxis dataKey="branch" tick={{ fill: '#334155', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Legend />
+                    <Bar dataKey="with_plans" name="With Plans" fill="#245BC1" stackId="a" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="no_plan" name="No Plans" fill="#FF0000" stackId="a" radius={[0, 0, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          ) : null}
+
+          {/* No Plan by Zone - only when branch selected */}
+          {isBranchSelected ? (
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">No Plan by Zone</h2>
+                <p className="text-sm text-slate-500">Zones with the highest number of retailers without a plan (top 10).</p>
+              </div>
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={noPlanZoneChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} stackOffset="expand">
+                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                    <XAxis dataKey="zone" tick={{ fill: '#334155', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Legend />
+                    <Bar dataKey="with_plans" name="With Plans" fill="#245BC1" stackId="a" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="no_plan" name="No Plans" fill="#FF0000" stackId="a" radius={[0, 0, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          ) : null}
         </div>
       )}
 
