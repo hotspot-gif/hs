@@ -535,6 +535,28 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     return totalPriority > 0 ? Math.round((p7Value / totalPriority) * 100) : 0;
   }, [priorityData, totalPriority]);
 
+  // Calculate ARPU
+  const arpuData = useMemo(() => {
+    let totalRevenue = 0;
+    let totalM0 = 0;
+
+    rows.forEach((row: Record<string, unknown>) => {
+      const plan599 = Number(row.plan_5_99 || 0);
+      const plan699 = Number(row.plan_6_99 || 0);
+      const plan799 = Number(row.plan_7_99 || 0);
+      const plan999 = Number(row.plan_9_99 || 0);
+      const plan1199 = Number(row.plan_11_99 || 0);
+      const plan1499 = Number(row.plan_14_99 || 0);
+      const m0 = fieldValue(row, monthInfo.find((m: MonthInfo) => m.offset === 0)?.aliases || []);
+
+      totalRevenue += (plan599 * 5.99) + (plan699 * 6.99) + (plan799 * 7.99) + (plan999 * 9.99) + (plan1199 * 11.99) + (plan1499 * 14.99);
+      totalM0 += m0;
+    });
+
+    const arpu = totalM0 > 0 ? totalRevenue / totalM0 : 0;
+    return { arpu, totalRevenue, totalM0 };
+  }, [rows, monthInfo]);
+
   const summaryCards = [
     {
       label: `Current MTD (${currentMonthLabel})`,
@@ -556,6 +578,12 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       label: 'Total Priority Retailers',
       value: totalPriority,
       color: '#46286E',
+    },
+    {
+      label: 'ARPU (Avg Revenue per User)',
+      value: arpuData.arpu,
+      color: '#FFD700',
+      formatCurrency: true,
     },
   ];
 
@@ -612,15 +640,17 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+        {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string; formatCurrency?: boolean }) => (
           <div
             key={card.label}
             className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
             style={{ borderLeftColor: card.color }}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
-            <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
+            <p className="mt-4 text-3xl font-bold text-[#21264E]">
+              {card.formatCurrency ? `€${card.value.toFixed(2)}` : card.value.toLocaleString()}
+            </p>
             {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
           </div>
         ))}
