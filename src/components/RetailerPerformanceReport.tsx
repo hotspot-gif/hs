@@ -612,7 +612,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
           <div
             key={card.label}
@@ -626,7 +626,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
@@ -856,27 +856,77 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             </div>
           </section>
         ) : (
-          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
-              <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
-            </div>
-            <div className="space-y-3">
-              {PRIORITY_LEVELS.map((level: PriorityLevel) => (
-                <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
-                      <p className="font-semibold text-[#21264E]">{level.name}</p>
+          <>
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
+                <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
+              </div>
+              <div className="space-y-3">
+                {PRIORITY_LEVELS.map((level: PriorityLevel) => (
+                  <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
+                        <p className="font-semibold text-[#21264E]">{level.name}</p>
+                      </div>
+                      <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
                     </div>
-                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
+                    <p className="mt-2 text-sm text-slate-600">{level.description}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{level.timeline}</p>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">{level.description}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{level.timeline}</p>
+                ))}
+              </div>
+            </section>
+
+            {/* Zone-wise summary table */}
+            {(region || branch) && (
+              <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-[#21264E]">Zone-wise Summary</h2>
+                  <p className="text-sm text-slate-500">Individual zone performance breakdown.</p>
                 </div>
-              ))}
-            </div>
-          </section>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr className="divide-x divide-slate-200">
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">Zone</th>
+                        {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
+                          <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                            <span className="hidden md:inline">{entry.label}</span>
+                            <span className="md:hidden">{entry.shortLabel}</span>
+                          </th>
+                        ))}
+                        {PRIORITY_LEVELS.map((level) => (
+                          <th key={level.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                            <span className="hidden md:inline">{level.name.split(' - ')[0]}</span>
+                            <span className="md:hidden">{level.name.split(' - ')[0]}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {rows.map((row: Record<string, unknown>, index: number) => (
+                        <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                          <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
+                          {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
+                            <td key={entry.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
+                              {fieldValue(row, entry.aliases).toLocaleString()}
+                            </td>
+                          ))}
+                          {PRIORITY_LEVELS.map((level) => (
+                            <td key={level.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
+                              {fieldValue(row, [level.key]).toLocaleString()}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 
