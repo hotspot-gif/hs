@@ -720,7 +720,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           <p className="text-sm text-slate-500">{topPlan.value.toLocaleString()}</p>
         </div>
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFD700', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">ARPU (Avg Revenue per User)</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">ARPU</p>
           <p className="mt-4 text-3xl font-bold text-[#21264E]">€{arpuData.arpu.toFixed(2)}</p>
         </div>
       </div>
