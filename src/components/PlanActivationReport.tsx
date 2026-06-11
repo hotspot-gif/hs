@@ -37,6 +37,7 @@ interface PlanData {
   group_a: number; // <= 6.99
   group_b: number; // > 6.99
   total: number;
+  [key: string]: unknown;
 }
 
 interface RetailerPlanData {
@@ -165,6 +166,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           const total = no_plan + group_a + group_b;
 
           return {
+            ...row,
             zone: row.zone || '',
             no_plan,
             plan_5_99,
