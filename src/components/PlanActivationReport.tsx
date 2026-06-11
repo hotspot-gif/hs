@@ -64,6 +64,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     direction: 'asc',
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isZoneSelected = Boolean(zone);
 
@@ -77,6 +78,27 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
 
   useEffect(() => {
     setLoading(true);
+    
+    // Fetch last updated date
+    supabase
+      .from('zone_coverage_summary')
+      .select('last_updated')
+      .limit(1)
+      .then(({ data: lastUpdatedData, error: lastUpdatedError }) => {
+        if (!lastUpdatedError && lastUpdatedData && lastUpdatedData.length > 0) {
+          const dateStr = lastUpdatedData[0].last_updated;
+          if (dateStr) {
+            const date = new Date(dateStr);
+            // Format as DD-MMM-YYYY
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            setLastUpdated(`${day}-${month}-${year}`);
+          }
+        }
+      });
+    
     let query = supabase.from('zone_coverage_summary').select('*');
 
     if (region && region !== 'ITALY') {
@@ -583,6 +605,15 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {/* Last Updated Section */}
+      {lastUpdated && (
+        <div className="rounded-2xl border border-[#21264E]/10 bg-[#f0f9ff] p-4 shadow-sm">
+          <p className="text-sm text-[#21264E]">
+            <span className="font-semibold">Last Updated:</span> {lastUpdated}
+          </p>
+        </div>
+      )}
+      
       <div className="rounded-3xl border border-[#21264E]/10 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -842,6 +873,13 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
           </table>
         </div>
       </section>
+      
+      {/* Calculation Logic Note */}
+      <div className="rounded-2xl border border-[#21264E]/10 bg-[#fffbeb] p-5 shadow-sm">
+        <p className="text-sm text-[#21264E]">
+          <span className="font-semibold">Calculation Logic:</span> The Activation counts include only FCA generated in current month with plan activation in Current month or CM-1 only. Any FCA generated with Plan activation date older than CM-1 are excluded. The invalid plans also excluded.
+        </p>
+      </div>
     </div>
   );
 }
