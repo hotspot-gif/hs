@@ -709,45 +709,46 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
             <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
           </div>
-          <div className="relative h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={62}
-                  outerRadius={100}
-                  paddingAngle={2}
-                >
-                  {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-              </PieChart>
-            </ResponsiveContainer>
-            {totalPriority > 0 && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
-                <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
-                <span className="text-xs text-slate-400">of priority retailers</span>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 grid gap-2">
-            {priorityData.map((item: PriorityLevelData) => (
-              <div key={item.key} className="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
-                  <div>
-                    <p className="text-sm font-semibold text-[#21264E]">{item.name}</p>
-                    <p className="text-xs text-slate-500">{item.description}</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={62}
+                    outerRadius={100}
+                    paddingAngle={2}
+                  >
+                    {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                </PieChart>
+              </ResponsiveContainer>
+              {totalPriority > 0 && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
+                  <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
+                  <span className="text-xs text-slate-400">of priority retailers</span>
                 </div>
-                <span className="text-sm font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
-              </div>
-            ))}
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {priorityData.map((item: PriorityLevelData) => (
+                <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
+                    <div>
+                      <p className="text-xs font-semibold text-[#21264E]">{item.name}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -892,28 +893,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
           </section>
         ) : (
           <>
-            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-[#21264E]">Priority Guide</h2>
-                <p className="text-sm text-slate-500">Instantly identify risk categories and recommended action for retailers.</p>
-              </div>
-              <div className="space-y-3">
-                {PRIORITY_LEVELS.map((level: PriorityLevel) => (
-                  <div key={level.key} className="rounded-2xl border border-[#E2E8F0] bg-[#fff7f2] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span style={{ background: level.color }} className="inline-flex h-3 w-3 rounded-full" />
-                        <p className="font-semibold text-[#21264E]">{level.name}</p>
-                      </div>
-                      <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{priorityData.find(item => item.key === level.key)?.value?.toLocaleString() ?? '0'}</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">{level.description}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{level.timeline}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
             {/* Zone-wise/Branch-wise summary table */}
             {(region || branch) && (
               <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
