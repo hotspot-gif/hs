@@ -101,7 +101,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
 
   const isZoneSelected = Boolean(zone);
   const isBranchSelected = Boolean(branch);
-  const isRegionSelected = Boolean(region) && region !== 'ITALY';
+  const isRegionSelected = Boolean(region);
 
   useEffect(() => {
     if (isZoneSelected) {

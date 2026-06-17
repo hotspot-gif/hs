@@ -178,7 +178,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   const isZoneSelected = Boolean(zone);
   const isBranchSelected = Boolean(branch);
-  const isRegionSelected = Boolean(region) && region !== 'ITALY';
+  const isRegionSelected = Boolean(region);
 
   const branchWiseData = useMemo(() => {
     // Group rows by branch and aggregate all data
