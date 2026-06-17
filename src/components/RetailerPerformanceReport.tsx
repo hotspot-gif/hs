@@ -177,6 +177,41 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isZoneSelected = Boolean(zone);
+  const isBranchSelected = Boolean(branch);
+  const isRegionSelected = Boolean(region) && region !== 'ITALY';
+
+  const branchWiseData = useMemo(() => {
+    // Group rows by branch and aggregate all data
+    const branchMap = new Map<string, Record<string, unknown>>();
+    rows.forEach(row => {
+      const branchName = (row['branch'] as string) || 'Unknown Branch';
+      if (!branchMap.has(branchName)) {
+        branchMap.set(branchName, {
+          zone: branchName, // Use zone field for branch name in table
+          ...Object.fromEntries(MONTH_KEYS.map(m => [m.key, 0])),
+          ...Object.fromEntries(PRIORITY_LEVELS.map(l => [l.key, 0]))
+        });
+      }
+      const entry = branchMap.get(branchName)!;
+      // Aggregate month keys
+      MONTH_KEYS.forEach(m => {
+        const val = fieldValue(row, m.aliases);
+        entry[m.key] = (entry[m.key] as number) + val;
+      });
+      // Aggregate priority levels
+      PRIORITY_LEVELS.forEach(l => {
+        const val = fieldValue(row, [l.key]);
+        entry[l.key] = (entry[l.key] as number) + val;
+      });
+    });
+    return Array.from(branchMap.values());
+  }, [rows]);
+
+  const displayRows = useMemo(() => {
+    if (isZoneSelected) return [];
+    if (isRegionSelected && !isBranchSelected) return branchWiseData;
+    return rows;
+  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData]);
 
   useEffect(() => {
     setLoading(true);
@@ -879,18 +914,18 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
               </div>
             </section>
 
-            {/* Zone-wise summary table */}
+            {/* Zone-wise/Branch-wise summary table */}
             {(region || branch) && (
               <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-[#21264E]">Zone-wise Summary</h2>
-                  <p className="text-sm text-slate-500">Individual zone performance breakdown.</p>
+                  <h2 className="text-lg font-semibold text-[#21264E]">{(isRegionSelected && !isBranchSelected) ? "Branch-wise Summary" : "Zone-wise Summary"}</h2>
+                  <p className="text-sm text-slate-500">{(isRegionSelected && !isBranchSelected) ? "Individual branch performance breakdown." : "Individual zone performance breakdown."}</p>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr className="divide-x divide-slate-200">
-                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">Zone</th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</th>
                         {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
                           <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
                             <span className="hidden md:inline">{entry.label}</span>
@@ -906,7 +941,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {rows.map((row: Record<string, unknown>, index: number) => (
+                      {displayRows.map((row: Record<string, unknown>, index: number) => (
                         <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
                           <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
                           {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (

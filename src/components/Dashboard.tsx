@@ -106,59 +106,84 @@ export default function Dashboard() {
   const [planZones, setPlanZones] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ZONE-MANAGER') return;
-    const assignedZone = String(user.zone || '').trim();
+    if (!user) return;
     const assignedBranch = normalizeBranch(user.branches?.[0] || '');
-
-    const apply = (branch: string, zone: string, region: string) => {
-      const b = normalizeBranch(branch);
-      const z = String(zone || '').trim();
-      if (!b || !z) return;
-      const r = region === 'NORTH' || region === 'SOUTH' ? region : 'ITALY';
-
-      setSelectedBranch(b);
-      setSelectedZone(z);
-
-      setKpiBranch(b);
-      setKpiZone(z);
-      setKpiRegion(r);
-
-      setIsdmBranch(b);
-      setIsdmZone(z);
-      setIsdmRegion(r);
-
-      setPerfBranch(b);
-      setPerfZone(z);
-      setPerfRegion(r);
-      
-      setPlanBranch(b);
-      setPlanZone(z);
-      setPlanRegion(r);
-    };
-
-    if (assignedZone && assignedBranch) {
-      const region = NORTH_REGION.includes(assignedBranch)
+    const region = assignedBranch
+      ? NORTH_REGION.includes(assignedBranch)
         ? 'NORTH'
         : SOUTH_REGION.includes(assignedBranch)
           ? 'SOUTH'
-          : 'ITALY';
-      apply(assignedBranch, assignedZone, region);
-      return;
+          : 'ITALY'
+      : 'ITALY';
+
+    if (user.role === 'ZONE-MANAGER') {
+      const assignedZone = String(user.zone || '').trim();
+
+      const apply = (branch: string, zone: string, r: string) => {
+        const b = normalizeBranch(branch);
+        const z = String(zone || '').trim();
+        if (!b || !z) return;
+
+        setSelectedBranch(b);
+        setSelectedZone(z);
+
+        setKpiBranch(b);
+        setKpiZone(z);
+        setKpiRegion(r);
+
+        setIsdmBranch(b);
+        setIsdmZone(z);
+        setIsdmRegion(r);
+
+        setPerfBranch(b);
+        setPerfZone(z);
+        setPerfRegion(r);
+        
+        setPlanBranch(b);
+        setPlanZone(z);
+        setPlanRegion(r);
+      };
+
+      if (assignedZone && assignedBranch) {
+        apply(assignedBranch, assignedZone, region);
+        return;
+      }
+
+      const legacyZone = assignedZone || String(user.branches?.[0] || '').trim();
+      if (!legacyZone) return;
+
+      supabase
+        .from('zone_coverage_summary')
+        .select('zone, branch, region')
+        .ilike('zone', `%${legacyZone}%`)
+        .limit(1)
+        .then(({ data }) => {
+          const row: any = (data as any[] | null)?.[0];
+          if (!row) return;
+          apply(String(row.branch || ''), String(row.zone || legacyZone), String(row.region || '').toUpperCase());
+        });
+    } else if (user.role === 'ASM') {
+      // ASM: automatically select assigned branch, set region based on branch
+      if (assignedBranch) {
+        setSelectedBranch(assignedBranch);
+        setKpiRegion(region);
+        setKpiBranch(assignedBranch);
+        setIsdmRegion(region);
+        setIsdmBranch(assignedBranch);
+        setPerfRegion(region);
+        setPerfBranch(assignedBranch);
+        setPlanRegion(region);
+        setPlanBranch(assignedBranch);
+      }
+    } else if (user.role === 'RSM') {
+      // RSM: automatically select assigned region
+      if (region && region !== 'ITALY') {
+        setKpiRegion(region);
+        setIsdmRegion(region);
+        setPerfRegion(region);
+        setPlanRegion(region);
+      }
     }
-
-    const legacyZone = assignedZone || String(user.branches?.[0] || '').trim();
-    if (!legacyZone) return;
-
-    supabase
-      .from('zone_coverage_summary')
-      .select('zone, branch, region')
-      .ilike('zone', `%${legacyZone}%`)
-      .limit(1)
-      .then(({ data }) => {
-        const row: any = (data as any[] | null)?.[0];
-        if (!row) return;
-        apply(String(row.branch || ''), String(row.zone || legacyZone), String(row.region || '').toUpperCase());
-      });
   }, [user]);
 
   // Fetch performance report branches based on region
@@ -1018,7 +1043,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 min-w-[140px]">
                 <Globe size={16} className="text-[#21264E]" />
-                {isZoneManager ? (
+                {isZoneManager || user?.role === 'ASM' ? (
                   <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[140px]">
                     {perfRegion}
                   </div>
@@ -1067,7 +1092,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 min-w-[140px]">
                 <Globe size={16} className="text-[#21264E]" />
-                {isZoneManager ? (
+                {isZoneManager || user?.role === 'ASM' ? (
                   <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-[#21264E] font-semibold min-w-[140px]">
                     {planRegion}
                   </div>

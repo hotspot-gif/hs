@@ -357,6 +357,42 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       .slice(0, 10);
   }, [rows]);
 
+  const branchWiseData = useMemo(() => {
+    // Group rows by branch and aggregate all plan data
+    const branchMap = new Map<string, PlanData>();
+    rows.forEach(row => {
+      const branchName = row.branch || 'Unknown Branch';
+      if (!branchMap.has(branchName)) {
+        branchMap.set(branchName, {
+          zone: branchName, // Use zone field for branch name in table
+          no_plan: 0,
+          plan_5_99: 0,
+          plan_6_99: 0,
+          plan_7_99: 0,
+          plan_9_99: 0,
+          plan_11_99: 0,
+          plan_14_99: 0,
+          group_a: 0,
+          group_b: 0,
+          total: 0,
+        });
+      }
+      const entry = branchMap.get(branchName)!;
+      entry.no_plan += row.no_plan;
+      entry.plan_5_99 += row.plan_5_99;
+      entry.plan_6_99 += row.plan_6_99;
+      entry.plan_7_99 += row.plan_7_99;
+      entry.plan_9_99 += row.plan_9_99;
+      entry.plan_11_99 += row.plan_11_99;
+      entry.plan_14_99 += row.plan_14_99;
+      entry.group_a += row.group_a;
+      entry.group_b += row.group_b;
+      entry.total += row.total;
+    });
+    // Convert map to array and sort by zone (which is branch name here)
+    return Array.from(branchMap.values());
+  }, [rows]);
+
   const handleSort = (key: any) => {
     let direction: 'asc' | 'desc' = 'desc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
@@ -365,9 +401,15 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     setSortConfig({ key, direction });
   };
 
+  const displayRows = useMemo(() => {
+    if (isZoneSelected) return [];
+    if (isRegionSelected && !isBranchSelected) return branchWiseData;
+    return rows;
+  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData]);
+
   const sortedRows = useMemo(() => {
-    if (!sortConfig) return rows;
-    return [...rows].sort((a, b) => {
+    if (!sortConfig) return displayRows;
+    return [...displayRows].sort((a, b) => {
       const aVal = a[sortConfig.key as keyof PlanData];
       const bVal = b[sortConfig.key as keyof PlanData];
       
@@ -381,7 +423,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         ? (aVal as number) - (bVal as number) 
         : (bVal as number) - (aVal as number);
     });
-  }, [rows, sortConfig]);
+  }, [displayRows, sortConfig]);
 
   const sortedRetailerRows = useMemo(() => {
     let sorted = [...retailerRows];
@@ -865,8 +907,8 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : "Zone-wise Breakdown"}</h2>
-            <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : "Detailed plan activation data per zone."}</p>
+            <h2 className="text-lg font-semibold text-[#21264E]">{isZoneSelected ? "Retailer-wise Breakdown" : (isRegionSelected && !isBranchSelected) ? "Branch-wise Breakdown" : "Zone-wise Breakdown"}</h2>
+            <p className="text-sm text-slate-500">{isZoneSelected ? "Detailed plan activation data per retailer." : (isRegionSelected && !isBranchSelected) ? "Detailed plan activation data per branch." : "Detailed plan activation data per zone."}</p>
             {isZoneSelected && (
               <input
                 type="text"
@@ -905,7 +947,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
             <thead className="bg-slate-50 text-slate-600">
               <tr className="divide-x divide-slate-200">
                 {[
-                  isZoneSelected ? { key: 'retailer_id', label: 'Retailer ID' } : { key: 'zone', label: 'Zone' },
+                  isZoneSelected ? { key: 'retailer_id', label: 'Retailer ID' } : (isRegionSelected && !isBranchSelected) ? { key: 'zone', label: 'Branch' } : { key: 'zone', label: 'Zone' },
                   { key: 'no_plan', label: 'No Plan' },
                   { key: 'plan_5_99', label: '€5.99' },
                   { key: 'plan_6_99', label: '€6.99' },
