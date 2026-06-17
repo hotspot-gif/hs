@@ -187,7 +187,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       const branchName = (row['branch'] as string) || 'Unknown Branch';
       if (!branchMap.has(branchName)) {
         branchMap.set(branchName, {
-          zone: branchName, // Use zone field for branch name in table
+          zone: branchName.replace('LMIT-HS-', ''), // Use zone field for branch name in table
           ...Object.fromEntries(MONTH_KEYS.map(m => [m.key, 0])),
           ...Object.fromEntries(PRIORITY_LEVELS.map(l => [l.key, 0]))
         });

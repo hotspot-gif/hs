@@ -352,7 +352,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     });
     // Convert map to array and sort
     return Array.from(branchMap.entries())
-      .map(([branch, data]) => ({ branch, no_plan: data.no_plan, with_plans: data.with_plans }))
+      .map(([branch, data]) => ({ branch: branch.replace('LMIT-HS-', ''), no_plan: data.no_plan, with_plans: data.with_plans }))
       .sort((a, b) => b.no_plan - a.no_plan)
       .slice(0, 10);
   }, [rows]);
@@ -364,7 +364,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
       const branchName = row.branch || 'Unknown Branch';
       if (!branchMap.has(branchName)) {
         branchMap.set(branchName, {
-          zone: branchName, // Use zone field for branch name in table
+          zone: branchName.replace('LMIT-HS-', ''), // Use zone field for branch name in table
           no_plan: 0,
           plan_5_99: 0,
           plan_6_99: 0,

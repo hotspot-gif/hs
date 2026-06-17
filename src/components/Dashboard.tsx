@@ -980,7 +980,7 @@ export default function Dashboard() {
                   className="w-full md:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-[#21264E] focus:ring-2 focus:ring-[#245bc1] outline-none"
                 >
                   {branches.map(b => (
-                    <option key={b} value={b}>{b}</option>
+                    <option key={b} value={b}>{b.replace('LMIT-HS-', '')}</option>
                   ))}
                 </select>
               )}
@@ -1031,7 +1031,7 @@ export default function Dashboard() {
                   >
                     <option value="">{kpiRegion === 'ITALY' ? 'All Branches' : `All ${kpiRegion} Branches`}</option>
                     {kpiBranches.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                      <option key={b} value={b}>{b.replace('LMIT-HS-', '')}</option>
                     ))}
                   </select>
                 )}
@@ -1080,7 +1080,7 @@ export default function Dashboard() {
                   >
                     <option value="">{perfRegion === 'ITALY' ? 'All Branches' : `All ${perfRegion} Branches`}</option>
                     {perfBranches.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                      <option key={b} value={b}>{b.replace('LMIT-HS-', '')}</option>
                     ))}
                   </select>
                 )}
@@ -1129,7 +1129,7 @@ export default function Dashboard() {
                   >
                     <option value="">{planRegion === 'ITALY' ? 'All Branches' : `All ${planRegion} Branches`}</option>
                     {planBranches.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                      <option key={b} value={b}>{b.replace('LMIT-HS-', '')}</option>
                     ))}
                   </select>
                 )}
@@ -1271,7 +1271,7 @@ export default function Dashboard() {
                   >
                     <option value="">{isdmRegion === 'ITALY' ? 'All Branches' : `All ${isdmRegion} Branches`}</option>
                     {isdmBranches.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                      <option key={b} value={b}>{b.replace('LMIT-HS-', '')}</option>
                     ))}
                   </select>
                 )}
