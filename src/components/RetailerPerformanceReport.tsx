@@ -532,11 +532,27 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   }, [branch, filteredRetailerRows, monthInfo, priorityFilter, region, user, zone]);
 
   const trendData = useMemo(() => {
-    const totals = monthInfo.map((entry: MonthInfo) => ({
-      name: entry.label,
-      value: rows.reduce((sum: number, row: Record<string, unknown>) => sum + fieldValue(row, entry.aliases), 0),
-    }));
-    return totals;
+    const now = new Date();
+    const today = now.getDate();
+    const lastUpdatedDay = today - 1;
+    
+    return monthInfo.map((entry: MonthInfo) => {
+      const total = rows.reduce((sum: number, row: Record<string, unknown>) => sum + fieldValue(row, entry.aliases), 0);
+      
+      let mtdEquivalent = total;
+      if (entry.offset < 0) {
+        const monthDate = new Date();
+        monthDate.setMonth(monthDate.getMonth() + entry.offset);
+        const daysInPastMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+        mtdEquivalent = Math.round((total / daysInPastMonth) * lastUpdatedDay);
+      }
+      
+      return {
+        name: entry.label,
+        value: total,
+        mtdEquivalent: mtdEquivalent
+      };
+    });
   }, [rows, monthInfo]);
 
   const currentMtd = useMemo(
@@ -683,7 +699,8 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
                 <Tooltip formatter={(value: number) => value.toLocaleString()} />
                 <Legend verticalAlign="top" height={36} />
-                <Line type="monotone" dataKey="value" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
