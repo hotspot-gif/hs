@@ -175,6 +175,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     direction: 'desc',
   });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [retailerIdSearch, setRetailerIdSearch] = useState('');
 
   const isZoneSelected = Boolean(zone);
   const isBranchSelected = Boolean(branch);
@@ -311,7 +312,11 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
     let result = retailerRows.filter((row: Record<string, unknown>) => {
       const rowPriority = normalizedPriority(getRowPriority(row));
-      return priorityFilter === 'ALL' || rowPriority.startsWith(priorityFilter);
+      const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
+      const searchTerm = retailerIdSearch.toLowerCase().trim();
+      const priorityMatch = priorityFilter === 'ALL' || rowPriority.startsWith(priorityFilter);
+      const retailerIdMatch = !searchTerm || rowRetailerId.includes(searchTerm);
+      return priorityMatch && retailerIdMatch;
     });
 
     if (sortConfig) {
@@ -351,7 +356,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     }
 
     return result;
-  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns]);
+  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
@@ -760,6 +765,17 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <label htmlFor="retailer-id-search" className="font-semibold text-slate-700">Search ID:</label>
+                  <input
+                    id="retailer-id-search"
+                    type="text"
+                    value={retailerIdSearch}
+                    onChange={(event) => setRetailerIdSearch(event.target.value)}
+                    placeholder="Enter retailer ID..."
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
+                  />
+                </div>
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
                   <label htmlFor="priority-filter" className="font-semibold text-slate-700">Filter:</label>
                   <select
