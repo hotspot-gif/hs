@@ -167,7 +167,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [retailerRows, setRetailerRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
-  const [priorityFilter, setPriorityFilter] = useState('ALL');
+
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
@@ -344,7 +344,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     [monthInfo],
   );
 
-  const normalizedPriority = (value: unknown) => String(value ?? '').trim().toUpperCase();
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
     let result = retailerRows.filter((row: Record<string, unknown>) => {
       const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
@@ -364,9 +363,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         } else if (sortConfig.key === 'avg_mtd') {
           aValue = calculateMtdVariance(a, monthInfo);
           bValue = calculateMtdVariance(b, monthInfo);
-        } else if (sortConfig.key === 'priority_level') {
-          aValue = getRowPriority(a);
-          bValue = getRowPriority(b);
         } else {
           // Find the column by key to get aliases
           const col = retailerTableColumns.find(c => c.key === sortConfig.key);
@@ -390,7 +386,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     }
 
     return result;
-  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
+  }, [retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
@@ -400,13 +396,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     setSortConfig({ key, direction });
   };
 
-  const priorityFilterOptions = useMemo(
-    () => [
-      { value: 'ALL', label: 'All Priorities' },
-      ...PRIORITY_LEVELS.map((level: PriorityLevel) => ({ value: level.key.slice(0, 2).toUpperCase(), label: level.name })),
-    ],
-    [],
-  );
+
 
   const handleExportExcel = useCallback(async () => {
     if (filteredRetailerRows.length === 0) return;
