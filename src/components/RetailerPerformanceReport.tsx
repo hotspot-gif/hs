@@ -167,7 +167,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [retailerRows, setRetailerRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
@@ -209,46 +209,10 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   }, [rows]);
 
   const displayRows = useMemo(() => {
-    let result: Record<string, unknown>[] = [];
-    if (isZoneSelected) return result;
-    if (isRegionSelected && !isBranchSelected) result = branchWiseData;
-    else result = rows;
-
-    if (sortConfig) {
-      result = [...result].sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
-
-        if (sortConfig.key === 'zone') {
-          aValue = String(a['zone'] ?? '');
-          bValue = String(b['zone'] ?? '');
-        } else if (sortConfig.key === 'avg_mtd') {
-          aValue = calculateMtdVariance(a, monthInfo);
-          bValue = calculateMtdVariance(b, monthInfo);
-        } else {
-          // Find the column by key to get aliases
-          const col = MONTH_KEYS.find(c => c.key === sortConfig.key);
-          if (col) {
-            aValue = fieldValue(a, col.aliases);
-            bValue = fieldValue(b, col.aliases);
-          } else {
-            aValue = 0;
-            bValue = 0;
-          }
-        }
-
-        if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-
-    return result;
-  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData, sortConfig, monthInfo]);
+    if (isZoneSelected) return [];
+    if (isRegionSelected && !isBranchSelected) return branchWiseData;
+    return rows;
+  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData]);
 
   useEffect(() => {
     setLoading(true);
@@ -344,6 +308,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     [monthInfo],
   );
 
+  const normalizedPriority = (value: unknown) => String(value ?? '').trim().toUpperCase();
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
     let result = retailerRows.filter((row: Record<string, unknown>) => {
       const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
@@ -363,6 +328,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         } else if (sortConfig.key === 'avg_mtd') {
           aValue = calculateMtdVariance(a, monthInfo);
           bValue = calculateMtdVariance(b, monthInfo);
+        } else if (sortConfig.key === 'priority_level') {
+          aValue = getRowPriority(a);
+          bValue = getRowPriority(b);
         } else {
           // Find the column by key to get aliases
           const col = retailerTableColumns.find(c => c.key === sortConfig.key);
@@ -386,7 +354,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     }
 
     return result;
-  }, [retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
+  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
@@ -396,7 +364,13 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     setSortConfig({ key, direction });
   };
 
-
+  const priorityFilterOptions = useMemo(
+    () => [
+      { value: 'ALL', label: 'All Priorities' },
+      ...PRIORITY_LEVELS.map((level: PriorityLevel) => ({ value: level.key.slice(0, 2).toUpperCase(), label: level.name })),
+    ],
+    [],
+  );
 
   const handleExportExcel = useCallback(async () => {
     if (filteredRetailerRows.length === 0) return;
@@ -874,7 +848,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                               {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
-                          <td className={`px-1 py-2 md:px-4 md:py-3 text-center font-semibold ${mtdVariance < 0 ? 'text-red-600' : 'text-slate-700'}`}>{mtdVariance.toLocaleString()}</td>
+                          <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
                         </tr>
                       );
                     })
@@ -902,44 +876,16 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr className="divide-x divide-slate-200">
-                        <th
-                          className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
-                          onClick={() => handleSort('zone')}
-                        >
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="hidden md:inline">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</span>
-                            <span className="md:hidden">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</span>
-                            {sortConfig?.key === 'zone' && (
-                              sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                            )}
-                          </div>
-                        </th>
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</th>
                         {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
-                          <th
-                            key={entry.key}
-                            className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
-                            onClick={() => handleSort(entry.key)}
-                          >
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="hidden md:inline">{entry.label}</span>
-                              <span className="md:hidden">{entry.shortLabel}</span>
-                              {sortConfig?.key === entry.key && (
-                                sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                              )}
-                            </div>
+                          <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                            <span className="hidden md:inline">{entry.label}</span>
+                            <span className="md:hidden">{entry.shortLabel}</span>
                           </th>
                         ))}
-                        <th
-                          className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
-                          onClick={() => handleSort('avg_mtd')}
-                        >
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="hidden md:inline">MTD Variance</span>
-                            <span className="md:hidden">Var</span>
-                            {sortConfig?.key === 'avg_mtd' && (
-                              sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                            )}
-                          </div>
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                          <span className="hidden md:inline">MTD Variance</span>
+                          <span className="md:hidden">Var</span>
                         </th>
                       </tr>
                     </thead>
@@ -954,7 +900,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                                 {fieldValue(row, entry.aliases).toLocaleString()}
                               </td>
                             ))}
-                            <td className={`px-1 py-2 md:px-4 md:py-3 text-center font-semibold ${mtdVariance < 0 ? 'text-red-600' : 'text-slate-700'}`}>{mtdVariance.toLocaleString()}</td>
+                            <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
                           </tr>
                         );
                       })}
