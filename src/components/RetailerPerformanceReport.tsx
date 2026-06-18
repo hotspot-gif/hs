@@ -535,11 +535,14 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     const now = new Date();
     const today = now.getDate();
     const lastUpdatedDay = today - 1;
+    const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     
     return monthInfo.map((entry: MonthInfo) => {
       const total = rows.reduce((sum: number, row: Record<string, unknown>) => sum + fieldValue(row, entry.aliases), 0);
       
       let mtdEquivalent = total;
+      let mtdProjection = total;
+      
       if (entry.offset < 0) {
         const monthDate = new Date();
         monthDate.setMonth(monthDate.getMonth() + entry.offset);
@@ -547,10 +550,19 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         mtdEquivalent = Math.round((total / daysInPastMonth) * lastUpdatedDay);
       }
       
+      if (entry.offset === 0) {
+        if (lastUpdatedDay > 0) {
+          mtdProjection = Math.round((total / lastUpdatedDay) * daysInCurrentMonth);
+        } else {
+          mtdProjection = total;
+        }
+      }
+      
       return {
         name: entry.label,
         value: total,
-        mtdEquivalent: mtdEquivalent
+        mtdEquivalent: mtdEquivalent,
+        mtdProjection: mtdProjection
       };
     });
   }, [rows, monthInfo]);
@@ -701,6 +713,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <Legend verticalAlign="top" height={36} />
                 <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
                 <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
