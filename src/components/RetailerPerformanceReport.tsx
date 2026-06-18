@@ -311,12 +311,10 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const normalizedPriority = (value: unknown) => String(value ?? '').trim().toUpperCase();
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
     let result = retailerRows.filter((row: Record<string, unknown>) => {
-      const rowPriority = normalizedPriority(getRowPriority(row));
       const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
       const searchTerm = retailerIdSearch.toLowerCase().trim();
-      const priorityMatch = priorityFilter === 'ALL' || rowPriority.startsWith(priorityFilter);
       const retailerIdMatch = !searchTerm || rowRetailerId.includes(searchTerm);
-      return priorityMatch && retailerIdMatch;
+      return retailerIdMatch;
     });
 
     if (sortConfig) {
@@ -382,7 +380,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       const branchLbl = (branch || 'ALL').replace('LMIT-HS-', '') || 'ALL';
       const zoneLbl = zone || 'ALL';
       const regionLbl = region || 'ITALY';
-      const filterLbl = priorityFilter === 'ALL' ? 'All' : priorityFilter;
       const nowStr = new Date().toLocaleString('en-GB');
 
       const summarySheet = XLSX.utils.json_to_sheet([
@@ -390,7 +387,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         { Key: 'Region', Value: regionLbl },
         { Key: 'Branch', Value: branchLbl },
         { Key: 'Zone', Value: zoneLbl },
-        { Key: 'Priority Filter', Value: filterLbl },
         { Key: 'Total Rows', Value: filteredRetailerRows.length },
         { Key: 'Exported By', Value: user?.full_name || user?.username || user?.email || '' },
       ]);
@@ -400,7 +396,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
           retailer_id: row['retailer_id'] ?? row['id'] ?? '',
           ...Object.fromEntries(monthInfo.map((entry: MonthInfo) => [entry.key, fieldValue(row, entry.aliases)])),
           mtd_variance: calculateMtdVariance(row, monthInfo),
-          p_level: getRowPriority(row),
         }))
       );
 
@@ -408,14 +403,14 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
       XLSX.utils.book_append_sheet(wb, dataSheet, 'Retailer Coverage');
 
-      const filename = `retailer-coverage-${branchLbl}-${zoneLbl}-${filterLbl}`.replace(/\s+/g, '_') + '.xlsx';
+      const filename = `retailer-coverage-${branchLbl}-${zoneLbl}`.replace(/\s+/g, '_') + '.xlsx';
       XLSX.writeFile(wb, filename, { compression: true });
     } catch (e) {
       console.error('Export Excel failed:', e);
     } finally {
       setExportingExcel(false);
     }
-  }, [branch, filteredRetailerRows, monthInfo, priorityFilter, region, user, zone]);
+  }, [branch, filteredRetailerRows, monthInfo, region, user, zone]);
 
   const handleExportPdf = useCallback(async () => {
     if (filteredRetailerRows.length === 0) return;
@@ -433,7 +428,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       const branchLbl = (branch || 'ALL').replace('LMIT-HS-', '') || 'ALL';
       const zoneLbl = zone || 'ALL';
       const regionLbl = region || 'ITALY';
-      const filterLbl = priorityFilter === 'ALL' ? 'All' : priorityFilter;
       const footerHook = (_data: any) => {
         const pageCount = pdf.internal.getNumberOfPages();
         const page = pdf.internal.getCurrentPageInfo().pageNumber;
@@ -464,13 +458,11 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
           'Retailer ID',
           ...monthInfo.map((entry: MonthInfo) => entry.label),
           'MTD Var',
-          'Priority Level',
         ]],
         body: filteredRetailerRows.map((row: Record<string, unknown>) => [
           String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? ''),
           ...monthInfo.map((entry: MonthInfo) => fieldValue(row, entry.aliases).toLocaleString()),
           calculateMtdVariance(row, monthInfo).toLocaleString(),
-          getRowPriority(row),
         ]),
         startY: 24,
         theme: 'grid',
@@ -480,56 +472,24 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         styles: { font: 'helvetica', overflow: 'linebreak' },
         tableWidth: 'auto',
         didDrawPage: footerHook,
-        didParseCell: (hook: any) => {
-          if (hook.section !== 'body') return;
-          const priorityColIndex = 1 + monthInfo.length + 1; // RetailerID + months + Avg MTD => priority column
-          if (hook.column.index !== priorityColIndex) return;
-
-          const raw = String(hook.cell.raw || '').trim();
-          const up = raw.toUpperCase();
-
-          // Prefer direct P# match
-          const pm = up.match(/^P([1-7])/);
-          let hex = '#94A3B8';
-          if (pm) {
-            hex = PRIORITY_LEVEL_MAP[`P${pm[1]}`] || hex;
-          } else {
-            // fallback: check if the label contains known priority names
-            const found = PRIORITY_LEVELS.find(l => up.includes(l.name.toUpperCase()) || up.includes(l.key.toUpperCase()));
-            if (found) hex = found.color;
-            // numeric fallback like '4' -> P4
-            const nm = up.match(/^([1-7])$/);
-            if (nm) hex = PRIORITY_LEVEL_MAP[`P${nm[1]}`] || hex;
-          }
-
-          const s = (hex || '#94A3B8').replace('#', '');
-          const r = Number.isNaN(parseInt(s.substring(0, 2), 16)) ? 148 : parseInt(s.substring(0, 2), 16);
-          const g = Number.isNaN(parseInt(s.substring(2, 4), 16)) ? 163 : parseInt(s.substring(2, 4), 16);
-          const b = Number.isNaN(parseInt(s.substring(4, 6), 16)) ? 184 : parseInt(s.substring(4, 6), 16);
-
-          hook.cell.styles.fillColor = [r, g, b];
-          hook.cell.styles.textColor = [255, 255, 255];
-          hook.cell.styles.fontStyle = 'bold';
-        },
         columnStyles: {
           0: { cellWidth: 55 },
           1: { cellWidth: 30 },
           2: { cellWidth: 30 },
           3: { cellWidth: 30 },
           4: { cellWidth: 30 },
-          5: { cellWidth: 30 },
-          6: { cellWidth: 42 },
+          5: { cellWidth: 42 },
         },
       });
 
-      const filename = `retailer-coverage-${branchLbl}-${zoneLbl}-${filterLbl}`.replace(/\s+/g, '_') + '.pdf';
+      const filename = `retailer-coverage-${branchLbl}-${zoneLbl}`.replace(/\s+/g, '_') + '.pdf';
       pdf.save(filename);
     } catch (e) {
       console.error('Export PDF failed:', e);
     } finally {
       setExportingPdf(false);
     }
-  }, [branch, filteredRetailerRows, monthInfo, priorityFilter, region, user, zone]);
+  }, [branch, filteredRetailerRows, monthInfo, region, user, zone]);
 
   const trendData = useMemo(() => {
     const now = new Date();
@@ -806,19 +766,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                     className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
                   />
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  <label htmlFor="priority-filter" className="font-semibold text-slate-700">Filter:</label>
-                  <select
-                    id="priority-filter"
-                    value={priorityFilter}
-                    onChange={(event) => setPriorityFilter(event.target.value)}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
-                  >
-                    {priorityFilterOptions.map((option: { value: string; label: string }) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -884,24 +831,11 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                         )}
                       </div>
                     </th>
-                    <th
-                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
-                      onClick={() => handleSort('priority_level')}
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        <span className="hidden md:inline">Priority Level</span>
-                        <span className="md:hidden">Pri</span>
-                        {sortConfig?.key === 'priority_level' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                        )}
-                      </div>
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredRetailerRows.length > 0 ? (
                     filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
-                      const priorityValue = getRowPriority(row);
                       const mtdVariance = calculateMtdVariance(row, monthInfo);
 
                       return (
@@ -915,20 +849,12 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                             </td>
                           ))}
                           <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
-                          <td className="px-1 py-2 md:px-4 md:py-3 text-center">
-                            <span
-                              className="inline-flex rounded-full px-1.5 py-0.5 md:px-3 md:py-1 text-[8px] md:text-xs font-semibold uppercase tracking-tight md:tracking-[0.18em] text-white"
-                              style={{ backgroundColor: getPriorityColor(priorityValue) }}
-                            >
-                              {priorityValue.split('-')[0].trim() || 'Unknown'}
-                            </span>
-                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
+                      <td colSpan={retailerTableColumns.length + 2} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
                         No retailer details found for this zone.
                       </td>
                     </tr>
@@ -957,30 +883,27 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                             <span className="md:hidden">{entry.shortLabel}</span>
                           </th>
                         ))}
-                        {PRIORITY_LEVELS.map((level) => (
-                          <th key={level.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
-                            <span className="hidden md:inline">{level.name.split(' - ')[0]}</span>
-                            <span className="md:hidden">{level.name.split(' - ')[0]}</span>
-                          </th>
-                        ))}
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                          <span className="hidden md:inline">MTD Variance</span>
+                          <span className="md:hidden">Var</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {displayRows.map((row: Record<string, unknown>, index: number) => (
-                        <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
-                          <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
-                          {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
-                            <td key={entry.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
-                              {fieldValue(row, entry.aliases).toLocaleString()}
-                            </td>
-                          ))}
-                          {PRIORITY_LEVELS.map((level) => (
-                            <td key={level.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
-                              {fieldValue(row, [level.key]).toLocaleString()}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      {displayRows.map((row: Record<string, unknown>, index: number) => {
+                        const mtdVariance = calculateMtdVariance(row, monthInfo);
+                        return (
+                          <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                            <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
+                            {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
+                              <td key={entry.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
+                                {fieldValue(row, entry.aliases).toLocaleString()}
+                              </td>
+                            ))}
+                            <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
