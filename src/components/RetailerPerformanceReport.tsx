@@ -209,10 +209,46 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   }, [rows]);
 
   const displayRows = useMemo(() => {
-    if (isZoneSelected) return [];
-    if (isRegionSelected && !isBranchSelected) return branchWiseData;
-    return rows;
-  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData]);
+    let result: Record<string, unknown>[] = [];
+    if (isZoneSelected) return result;
+    if (isRegionSelected && !isBranchSelected) result = branchWiseData;
+    else result = rows;
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortConfig.key === 'zone') {
+          aValue = String(a['zone'] ?? '');
+          bValue = String(b['zone'] ?? '');
+        } else if (sortConfig.key === 'avg_mtd') {
+          aValue = calculateMtdVariance(a, monthInfo);
+          bValue = calculateMtdVariance(b, monthInfo);
+        } else {
+          // Find the column by key to get aliases
+          const col = MONTH_KEYS.find(c => c.key === sortConfig.key);
+          if (col) {
+            aValue = fieldValue(a, col.aliases);
+            bValue = fieldValue(b, col.aliases);
+          } else {
+            aValue = 0;
+            bValue = 0;
+          }
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData, sortConfig, monthInfo]);
 
   useEffect(() => {
     setLoading(true);
@@ -848,7 +884,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                               {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
-                          <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
+                          <td className={`px-1 py-2 md:px-4 md:py-3 text-center font-semibold ${mtdVariance < 0 ? 'text-red-600' : 'text-slate-700'}`}>{mtdVariance.toLocaleString()}</td>
                         </tr>
                       );
                     })
@@ -876,16 +912,44 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr className="divide-x divide-slate-200">
-                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</th>
+                        <th
+                          className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
+                          onClick={() => handleSort('zone')}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="hidden md:inline">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</span>
+                            <span className="md:hidden">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</span>
+                            {sortConfig?.key === 'zone' && (
+                              sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
+                            )}
+                          </div>
+                        </th>
                         {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
-                          <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
-                            <span className="hidden md:inline">{entry.label}</span>
-                            <span className="md:hidden">{entry.shortLabel}</span>
+                          <th
+                            key={entry.key}
+                            className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
+                            onClick={() => handleSort(entry.key)}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="hidden md:inline">{entry.label}</span>
+                              <span className="md:hidden">{entry.shortLabel}</span>
+                              {sortConfig?.key === entry.key && (
+                                sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
+                              )}
+                            </div>
                           </th>
                         ))}
-                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
-                          <span className="hidden md:inline">MTD Variance</span>
-                          <span className="md:hidden">Var</span>
+                        <th
+                          className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold text-center hover:bg-slate-100"
+                          onClick={() => handleSort('avg_mtd')}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="hidden md:inline">MTD Variance</span>
+                            <span className="md:hidden">Var</span>
+                            {sortConfig?.key === 'avg_mtd' && (
+                              sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
+                            )}
+                          </div>
                         </th>
                       </tr>
                     </thead>
@@ -900,7 +964,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                                 {fieldValue(row, entry.aliases).toLocaleString()}
                               </td>
                             ))}
-                            <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
+                            <td className={`px-1 py-2 md:px-4 md:py-3 text-center font-semibold ${mtdVariance < 0 ? 'text-red-600' : 'text-slate-700'}`}>{mtdVariance.toLocaleString()}</td>
                           </tr>
                         );
                       })}
