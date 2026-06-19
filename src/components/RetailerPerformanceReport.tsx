@@ -592,7 +592,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     { name: 'Current MTD', value: currentMtd, fill: '#245bc1' },
   ];
 
-  if (!loading && !isZoneSelected && rows.length === 0) {
+  if (!loading && rows.length === 0) {
     return (
       <div className="flex min-h-[480px] items-center justify-center p-8">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-8 text-center shadow-sm">
@@ -640,282 +640,279 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </div>
       </div>
 
-      {!isZoneSelected && (
-        <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
-              <div
-                key={card.label}
-                className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
-                style={{ borderLeftColor: card.color }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
-                <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
-                {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
-              </div>
-            ))}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
+          <div
+            key={card.label}
+            className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
+            style={{ borderLeftColor: card.color }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
+            <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
+            {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
           </div>
+        ))}
+      </div>
 
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#21264E]">Monthly Performance Trend</h2>
-                  <p className="text-sm text-slate-500">Current month and prior three months updated automatically.</p>
-                </div>
-                <div className="rounded-full bg-[#245bc1]/10 px-3 py-1 text-sm font-semibold text-[#245bc1]">{currentMonthLabel} is m0</div>
-              </div>
-              <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                    <Legend verticalAlign="top" height={36} />
-                    <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
-                <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
-              </div>
-              <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                    <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          </div>
-
-          <div className="grid gap-4 grid-cols-1">
-            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
-                <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative h-[340px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={62}
-                        outerRadius={100}
-                        paddingAngle={2}
-                      >
-                        {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {totalPriority > 0 && (
-                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
-                      <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
-                      <span className="text-xs text-slate-400">of priority retailers</span>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {priorityData.map((item: PriorityLevelData) => (
-                    <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
-                        <div>
-                          <p className="text-xs font-semibold text-[#21264E]">{item.name}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </div>
-        </>
-      )}
-
-      {isZoneSelected ? (
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-[#21264E]">Retailer Performance Details</h2>
-              <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
+              <h2 className="text-lg font-semibold text-[#21264E]">Monthly Performance Trend</h2>
+              <p className="text-sm text-slate-500">Current month and prior three months updated automatically.</p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                <label htmlFor="retailer-id-search" className="font-semibold text-slate-700">Search ID:</label>
-                <input
-                  id="retailer-id-search"
-                  type="text"
-                  value={retailerIdSearch}
-                  onChange={(event) => setRetailerIdSearch(event.target.value)}
-                  placeholder="Enter retailer ID..."
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportPdf}
-                  disabled={exportingPdf || filteredRetailerRows.length === 0}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#F04438] text-white hover:bg-[#d93a30] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <FileDown size={16} />
-                  {exportingPdf ? 'Exporting...' : 'PDF - Adobe Acrobat'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  disabled={exportingExcel || filteredRetailerRows.length === 0}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#16A34A] text-white hover:bg-[#12843d] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <FileSpreadsheet size={16} />
-                  {exportingExcel ? 'Exporting...' : 'Excel - MS Excel'}
-                </button>
-              </div>
+            <div className="rounded-full bg-[#245bc1]/10 px-3 py-1 text-sm font-semibold text-[#245bc1]">{currentMonthLabel} is m0</div>
+          </div>
+          <div className="h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                <Legend verticalAlign="top" height={36} />
+                <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
+            <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
+          </div>
+          <div className="h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1">
+        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
+            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={62}
+                    outerRadius={100}
+                    paddingAngle={2}
+                  >
+                    {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                </PieChart>
+              </ResponsiveContainer>
+              {totalPriority > 0 && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
+                  <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
+                  <span className="text-xs text-slate-400">of priority retailers</span>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {priorityData.map((item: PriorityLevelData) => (
+                <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
+                    <div>
+                      <p className="text-xs font-semibold text-[#21264E]">{item.name}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="overflow-x-hidden rounded-xl border border-slate-200">
-            <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr className="divide-x divide-slate-200">
-                  <th
-                    className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100"
-                    onClick={() => handleSort('retailer_id')}
+        </section>
+
+        {isZoneSelected ? (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-[#21264E]">Retailer Performance Details</h2>
+                <p className="text-sm text-slate-500">Retailer details allocated to the selected zone.</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <label htmlFor="retailer-id-search" className="font-semibold text-slate-700">Search ID:</label>
+                  <input
+                    id="retailer-id-search"
+                    type="text"
+                    value={retailerIdSearch}
+                    onChange={(event) => setRetailerIdSearch(event.target.value)}
+                    placeholder="Enter retailer ID..."
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportPdf}
+                    disabled={exportingPdf || filteredRetailerRows.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#F04438] text-white hover:bg-[#d93a30] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <div className="flex items-center gap-1">
-                      <span className="hidden md:inline">Retailer ID</span>
-                      <span className="md:hidden">ID</span>
-                      {sortConfig?.key === 'retailer_id' && (
-                        sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                      )}
-                    </div>
-                  </th>
-                  {retailerTableColumns.map((column: { key: string; label: string; shortLabel: string; aliases: string[] }) => (
+                    <FileDown size={16} />
+                    {exportingPdf ? 'Exporting...' : 'PDF - Adobe Acrobat'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    disabled={exportingExcel || filteredRetailerRows.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-[#16A34A] text-white hover:bg-[#12843d] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <FileSpreadsheet size={16} />
+                    {exportingExcel ? 'Exporting...' : 'Excel - MS Excel'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-hidden rounded-xl border border-slate-200">
+              <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr className="divide-x divide-slate-200">
                     <th
-                      key={column.key}
-                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
-                      onClick={() => handleSort(column.key)}
+                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100"
+                      onClick={() => handleSort('retailer_id')}
                     >
-                      <div className="flex items-center justify-center gap-1">
-                        <span className="hidden md:inline">{column.label}</span>
-                        <span className="md:hidden">{column.shortLabel}</span>
-                        {sortConfig?.key === column.key && (
+                      <div className="flex items-center gap-1">
+                        <span className="hidden md:inline">Retailer ID</span>
+                        <span className="md:hidden">ID</span>
+                        {sortConfig?.key === 'retailer_id' && (
                           sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
                         )}
                       </div>
                     </th>
-                  ))}
-                  <th
-                    className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
-                    onClick={() => handleSort('avg_mtd')}
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span className="hidden md:inline">MTD Variance</span>
-                      <span className="md:hidden">Var</span>
-                      {sortConfig?.key === 'avg_mtd' && (
-                        sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
-                      )}
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredRetailerRows.length > 0 ? (
-                  filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
-                    const mtdVariance = calculateMtdVariance(row, monthInfo);
-
-                    return (
-                      <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
-                        <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 break-all md:break-normal">
-                          {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
-                        </td>
-                        {retailerTableColumns.map((column: any) => (
-                          <td key={column.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
-                            {fieldValue(row, column.aliases).toLocaleString()}
-                          </td>
-                        ))}
-                        <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={retailerTableColumns.length + 2} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
-                      No retailer details found for this zone.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : (
-        <>
-          {/* Zone-wise/Branch-wise summary table */}
-          {(region || branch) && (
-            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-[#21264E]">{(isRegionSelected && !isBranchSelected) ? "Branch-wise Summary" : "Zone-wise Summary"}</h2>
-                <p className="text-sm text-slate-500">{(isRegionSelected && !isBranchSelected) ? "Individual branch performance breakdown." : "Individual zone performance breakdown."}</p>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
-                  <thead className="bg-slate-50 text-slate-600">
-                    <tr className="divide-x divide-slate-200">
-                      <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</th>
-                      {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
-                        <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
-                          <span className="hidden md:inline">{entry.label}</span>
-                          <span className="md:hidden">{entry.shortLabel}</span>
-                        </th>
-                      ))}
-                      <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                    {retailerTableColumns.map((column: { key: string; label: string; shortLabel: string; aliases: string[] }) => (
+                      <th
+                        key={column.key}
+                        className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
+                        onClick={() => handleSort(column.key)}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="hidden md:inline">{column.label}</span>
+                          <span className="md:hidden">{column.shortLabel}</span>
+                          {sortConfig?.key === column.key && (
+                            sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                    <th
+                      className="cursor-pointer px-1 py-2 md:px-4 md:py-3 font-semibold hover:bg-slate-100 text-center"
+                      onClick={() => handleSort('avg_mtd')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
                         <span className="hidden md:inline">MTD Variance</span>
                         <span className="md:hidden">Var</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {displayRows.map((row: Record<string, unknown>, index: number) => {
+                        {sortConfig?.key === 'avg_mtd' && (
+                          sortConfig.direction === 'asc' ? <ChevronUp size={12} className="md:w-3.5 md:h-3.5" /> : <ChevronDown size={12} className="md:w-3.5 md:h-3.5" />
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredRetailerRows.length > 0 ? (
+                    filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
                       const mtdVariance = calculateMtdVariance(row, monthInfo);
+
                       return (
-                        <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
-                          <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
-                          {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
-                            <td key={entry.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
-                              {fieldValue(row, entry.aliases).toLocaleString()}
+                        <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                          <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 break-all md:break-normal">
+                            {String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '—')}
+                          </td>
+                          {retailerTableColumns.map((column: any) => (
+                            <td key={column.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
+                              {fieldValue(row, column.aliases).toLocaleString()}
                             </td>
                           ))}
                           <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-        </>
-      )}
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={retailerTableColumns.length + 2} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
+                        No retailer details found for this zone.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* Zone-wise/Branch-wise summary table */}
+            {(region || branch) && (
+              <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-[#21264E]">{(isRegionSelected && !isBranchSelected) ? "Branch-wise Summary" : "Zone-wise Summary"}</h2>
+                  <p className="text-sm text-slate-500">{(isRegionSelected && !isBranchSelected) ? "Individual branch performance breakdown." : "Individual zone performance breakdown."}</p>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full divide-y divide-slate-200 text-left text-[10px] md:text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr className="divide-x divide-slate-200">
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">{(isRegionSelected && !isBranchSelected) ? "Branch" : "Zone"}</th>
+                        {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
+                          <th key={entry.key} className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                            <span className="hidden md:inline">{entry.label}</span>
+                            <span className="md:hidden">{entry.shortLabel}</span>
+                          </th>
+                        ))}
+                        <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                          <span className="hidden md:inline">MTD Variance</span>
+                          <span className="md:hidden">Var</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {displayRows.map((row: Record<string, unknown>, index: number) => {
+                        const mtdVariance = calculateMtdVariance(row, monthInfo);
+                        return (
+                          <tr key={`${row['zone'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
+                            <td className="px-1 py-2 md:px-4 md:py-3 font-medium text-slate-900 text-center">{String(row['zone'] || '—')}</td>
+                            {monthInfo.map((entry: MonthInfo & { shortLabel: string }) => (
+                              <td key={entry.key} className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">
+                                {fieldValue(row, entry.aliases).toLocaleString()}
+                              </td>
+                            ))}
+                            <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
+
     </div>
   );
 }
