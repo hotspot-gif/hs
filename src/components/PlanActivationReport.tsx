@@ -711,7 +711,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     }
   }, [branch, sortedRetailerRows, region, zone]);
 
-  if (!loading && rows.length === 0) {
+  if (!loading && !isZoneSelected && rows.length === 0) {
     return (
       <div className="flex min-h-[480px] items-center justify-center p-8">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-8 text-center shadow-sm">
@@ -759,98 +759,102 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Activations</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.total.toLocaleString()}</p>
-        </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FF0000', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">No Plan</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.no_plan.toLocaleString()}</p>
-        </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#08DC7D', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plan Less than €6.99</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_a.toLocaleString()}</p>
-        </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plans Greater than €6.99</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_b.toLocaleString()}</p>
-        </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Top Plan</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">{topPlan.name}</p>
-          <p className="text-sm text-slate-500">{topPlan.value.toLocaleString()}</p>
-        </div>
-        <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFD700', borderLeftWidth: '4px' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">ARPU</p>
-          <p className="mt-4 text-3xl font-bold text-[#21264E]">€{arpuData.arpu.toFixed(2)}</p>
-        </div>
-      </div>
+      {!isZoneSelected && (
+        <>
+          {/* KPI Cards */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Total Activations</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.total.toLocaleString()}</p>
+            </div>
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FF0000', borderLeftWidth: '4px' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">No Plan</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.no_plan.toLocaleString()}</p>
+            </div>
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#08DC7D', borderLeftWidth: '4px' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plan Less than €6.99</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_a.toLocaleString()}</p>
+            </div>
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Plans Greater than €6.99</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">{totals.group_b.toLocaleString()}</p>
+            </div>
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#245BC1', borderLeftWidth: '4px' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">Top Plan</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">{topPlan.name}</p>
+              <p className="text-sm text-slate-500">{topPlan.value.toLocaleString()}</p>
+            </div>
+            <div className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm" style={{ borderLeftColor: '#FFD700', borderLeftWidth: '4px' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">ARPU</p>
+              <p className="mt-4 text-3xl font-bold text-[#21264E]">€{arpuData.arpu.toFixed(2)}</p>
+            </div>
+          </div>
 
-      {/* Charts Section */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        {/* Plan Distribution Bar Chart */}
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Plan Distribution</h2>
-            <p className="text-sm text-slate-500">Number of retailers per plan tier.</p>
-          </div>
-          <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={planDistributionChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {planDistributionChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        {/* Group Pie Chart */}
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Plan Less than €6.99 vs Greater than €6.99</h2>
-            <p className="text-sm text-slate-500">Distribution of retailers by value group.</p>
-          </div>
-          <div className="relative h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={groupPieChartData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={62}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  label={({ name, value }) => {
-                    const percentage = totalActivation > 0 ? ((value / totalActivation) * 100).toFixed(0) : 0;
-                    return `${name} ${percentage}%`;
-                  }}
-                >
-                  {groupPieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-              </PieChart>
-            </ResponsiveContainer>
-            {totalActivation > 0 && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-xs uppercase tracking-[0.18em] text-slate-500">With Plans</span>
-                <span className="mt-1 text-3xl font-bold text-[#245bc1]">{plansShare}%</span>
-                <span className="text-xs text-slate-400">of total activations</span>
+          {/* Charts Section */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            {/* Plan Distribution Bar Chart */}
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">Plan Distribution</h2>
+                <p className="text-sm text-slate-500">Number of retailers per plan tier.</p>
               </div>
-            )}
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={planDistributionChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {planDistributionChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* Group Pie Chart */}
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">Plan Less than €6.99 vs Greater than €6.99</h2>
+                <p className="text-sm text-slate-500">Distribution of retailers by value group.</p>
+              </div>
+              <div className="relative h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={groupPieChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={62}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      label={({ name, value }) => {
+                        const percentage = totalActivation > 0 ? ((value / totalActivation) * 100).toFixed(0) : 0;
+                        return `${name} ${percentage}%`;
+                      }}
+                    >
+                      {groupPieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                  </PieChart>
+                </ResponsiveContainer>
+                {totalActivation > 0 && (
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">With Plans</span>
+                    <span className="mt-1 text-3xl font-bold text-[#245bc1]">{plansShare}%</span>
+                    <span className="text-xs text-slate-400">of total activations</span>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
+        </>
+      )}
 
       {/* No Plan Charts */}
       {!isZoneSelected && (

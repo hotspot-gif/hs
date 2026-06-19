@@ -592,7 +592,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     { name: 'Current MTD', value: currentMtd, fill: '#245bc1' },
   ];
 
-  if (!loading && rows.length === 0) {
+  if (!loading && !isZoneSelected && rows.length === 0) {
     return (
       <div className="flex min-h-[480px] items-center justify-center p-8">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-8 text-center shadow-sm">
@@ -640,112 +640,117 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
-          <div
-            key={card.label}
-            className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
-            style={{ borderLeftColor: card.color }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
-            <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
-            {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
+      {!isZoneSelected && (
+        <>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {summaryCards.map((card: { label: string; value: number; color: string; suffix?: string }) => (
+              <div
+                key={card.label}
+                className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm border-l-4"
+                style={{ borderLeftColor: card.color }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#21264E]/70">{card.label}</p>
+                <p className="mt-4 text-3xl font-bold text-[#21264E]">{card.value.toLocaleString()}</p>
+                {card.suffix && <p className="mt-2 text-sm text-slate-500">{card.suffix}</p>}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-[#21264E]">Monthly Performance Trend</h2>
-              <p className="text-sm text-slate-500">Current month and prior three months updated automatically.</p>
-            </div>
-            <div className="rounded-full bg-[#245bc1]/10 px-3 py-1 text-sm font-semibold text-[#245bc1]">{currentMonthLabel} is m0</div>
-          </div>
-          <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Legend verticalAlign="top" height={36} />
-                <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
-            <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
-          </div>
-          <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      </div>
-
-      <div className="grid gap-4 grid-cols-1">
-        <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
-            <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative h-[340px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={62}
-                    outerRadius={100}
-                    paddingAngle={2}
-                  >
-                    {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                </PieChart>
-              </ResponsiveContainer>
-              {totalPriority > 0 && (
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
-                  <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
-                  <span className="text-xs text-slate-400">of priority retailers</span>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#21264E]">Monthly Performance Trend</h2>
+                  <p className="text-sm text-slate-500">Current month and prior three months updated automatically.</p>
                 </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {priorityData.map((item: PriorityLevelData) => (
-                <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
-                    <div>
-                      <p className="text-xs font-semibold text-[#21264E]">{item.name}</p>
+                <div className="rounded-full bg-[#245bc1]/10 px-3 py-1 text-sm font-semibold text-[#245bc1]">{currentMonthLabel} is m0</div>
+              </div>
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Legend verticalAlign="top" height={36} />
+                    <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">MTD vs 3-Month Average</h2>
+                <p className="text-sm text-slate-500">Compare current retailer MTD performance to the trailing 3-month trend.</p>
+              </div>
+              <div className="h-[340px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={comparisonData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1">
+            <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#21264E]">Priority Distribution</h2>
+                <p className="text-sm text-slate-500">Priority status for the selected filter set.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative h-[340px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={62}
+                        outerRadius={100}
+                        paddingAngle={2}
+                      >
+                        {(priorityVisible.length > 0 ? priorityVisible : [{ name: 'No priority data', value: 1, color: '#CBD5E1' }]).map((entry: { name: string; value: number; color?: string }, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color || '#CBD5E1'} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {totalPriority > 0 && (
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-xs uppercase tracking-[0.18em] text-slate-500">P7 share</span>
+                      <span className="mt-1 text-3xl font-bold text-[#00C853]">{p7Share}%</span>
+                      <span className="text-xs text-slate-400">of priority retailers</span>
                     </div>
-                  </div>
-                  <span className="text-xs font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+                  )}
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {priorityData.map((item: PriorityLevelData) => (
+                    <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
+                        <div>
+                          <p className="text-xs font-semibold text-[#21264E]">{item.name}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-[#21264E]">{item.value.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
+        </>
+      )}
 
         {isZoneSelected ? (
           <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
