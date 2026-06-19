@@ -112,6 +112,14 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
   }, [isZoneSelected]);
 
   useEffect(() => {
+    console.log('PlanActivationReport useEffect triggered!', {
+      user,
+      region,
+      branch,
+      zone,
+      isZoneSelected
+    });
+
     setLoading(true);
     
     // Fetch last updated date
@@ -153,6 +161,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
         console.error('Plan activation fetch error:', error);
         setRows([]);
       } else {
+        console.log('PlanActivationReport zone_coverage_summary data:', data);
         // Transform the data
         const transformed = (data || []).map((row: any) => {
           const no_plan = Number(row.no_plan || 0);
@@ -190,21 +199,19 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     if (isZoneSelected) {
       let retailerQuery = supabase.from('retailer_coverage').select('*');
 
-      if (region && region !== 'ITALY') {
-        retailerQuery = retailerQuery.eq('region', region);
-      }
-      if (branch) {
-        retailerQuery = retailerQuery.eq('branch', branch);
-      }
+      // When zone is selected, only filter by zone since it's unique
       if (zone) {
         retailerQuery = retailerQuery.eq('zone', zone);
       }
+
+      console.log('PlanActivationReport fetching retailer_coverage with filters:', { region, branch, zone });
 
       retailerQuery.limit(5000).then(({ data, error }: { data: any[] | null; error: any }) => {
         if (error) {
           console.error('Retailer plan fetch error:', error);
           setRetailerRows([]);
         } else {
+          console.log('PlanActivationReport retailer_coverage data:', data);
           const transformed = (data || []).map((row: any) => {
             const no_plan = Number(row.no_plan || 0);
             const plan_5_99 = Number(row.plan_5_99 || 0);
@@ -238,7 +245,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     } else {
       setRetailerRows([]);
     }
-  }, [region, branch, zone, isZoneSelected]);
+  }, [region, branch, zone, isZoneSelected, user]);
 
   // Calculated totals
   const totals = useMemo(() => {

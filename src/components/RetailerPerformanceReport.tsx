@@ -215,6 +215,14 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   }, [isZoneSelected, isRegionSelected, isBranchSelected, rows, branchWiseData]);
 
   useEffect(() => {
+    console.log('RetailerPerformanceReport useEffect triggered!', {
+      user,
+      region,
+      branch,
+      zone,
+      isZoneSelected
+    });
+
     setLoading(true);
     
     // Fetch last updated date
@@ -256,6 +264,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         console.error('Retailer performance fetch error:', error);
         setRows([]);
       } else {
+        console.log('zone_coverage_summary data received:', data);
         setRows((data || []) as Record<string, unknown>[]);
       }
       setLoading(false);
@@ -264,28 +273,26 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     if (isZoneSelected) {
       let retailerQuery = supabase.from('retailer_coverage').select('*');
 
-      if (region && region !== 'ITALY') {
-        retailerQuery = retailerQuery.eq('region', region);
-      }
-      if (branch) {
-        retailerQuery = retailerQuery.eq('branch', branch);
-      }
+      // When zone is selected, only filter by zone since it's unique
       if (zone) {
         retailerQuery = retailerQuery.eq('zone', zone);
       }
+
+      console.log('Fetching retailer_coverage with filters:', { region, branch, zone });
 
       retailerQuery.limit(5000).then(({ data, error }: { data: Record<string, unknown>[] | null; error: unknown }) => {
         if (error) {
           console.error('Retailer coverage fetch error:', error);
           setRetailerRows([]);
         } else {
+          console.log('retailer_coverage data received:', data);
           setRetailerRows((data || []) as Record<string, unknown>[]);
         }
       });
     } else {
       setRetailerRows([]);
     }
-  }, [region, branch, zone, isZoneSelected]);
+  }, [region, branch, zone, isZoneSelected, user]);
 
   const currentMonthLabel = useMemo(() => getMonthLabel(0), []);
   const monthInfo = useMemo<MonthInfo[]>(
@@ -310,6 +317,12 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
 
   const normalizedPriority = (value: unknown) => String(value ?? '').trim().toUpperCase();
   const filteredRetailerRows = useMemo<Record<string, unknown>[]>(() => {
+    console.log('Calculating filteredRetailerRows:', {
+      retailerRows,
+      retailerIdSearch,
+      sortConfig
+    });
+
     let result = retailerRows.filter((row: Record<string, unknown>) => {
       const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
       const searchTerm = retailerIdSearch.toLowerCase().trim();
@@ -353,8 +366,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       });
     }
 
+    console.log('Final filteredRetailerRows:', result);
     return result;
-  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch]);
+  }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch, monthInfo]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
