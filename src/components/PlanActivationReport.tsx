@@ -711,7 +711,7 @@ export default function PlanActivationReport({ region, branch, zone, user }: Pla
     }
   }, [branch, sortedRetailerRows, region, zone]);
 
-  if (!loading && rows.length === 0) {
+  if (!loading && rows.length === 0 && !isZoneSelected) {
     return (
       <div className="flex min-h-[480px] items-center justify-center p-8">
         <div className="rounded-3xl border border-[#21264E]/10 bg-white p-8 text-center shadow-sm">
