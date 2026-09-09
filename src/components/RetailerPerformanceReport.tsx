@@ -687,9 +687,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
                 <Tooltip formatter={(value: number) => value.toLocaleString()} />
                 <Legend verticalAlign="top" height={36} />
-                <Line type="monotone" dataKey="value" name="Total Monthly" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="mtdEquivalent" name="MTD Equivalent" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="mtdProjection" name="MTD Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="value" name="Total GA" stroke="#245bc1" strokeWidth={4} dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdEquivalent" name="MTD" stroke="#08dc7d" strokeWidth={4} dot={{ r: 4, fill: '#08dc7d' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="mtdProjection" name="Projection" stroke="#245bc1" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 4, fill: '#245bc1' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
