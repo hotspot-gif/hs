@@ -147,6 +147,8 @@ const getRowPriority = (row: Record<string, unknown>) => {
   return String(raw).trim();
 };
 
+const getPriorityKey = (value: unknown) => /^P[1-7]/.exec(String(value ?? '').trim().toUpperCase())?.[0] ?? '';
+
 const calculateMtdVariance = (row: Record<string, unknown>, monthInfo: MonthInfo[]) => {
   const m0 = fieldValue(row, monthInfo.find(m => m.offset === 0)?.aliases || []);
   const m1 = fieldValue(row, monthInfo.find(m => m.offset === -1)?.aliases || []);
@@ -327,7 +329,8 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       const rowRetailerId = String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? '').toLowerCase();
       const searchTerm = retailerIdSearch.toLowerCase().trim();
       const retailerIdMatch = !searchTerm || rowRetailerId.includes(searchTerm);
-      return retailerIdMatch;
+      const priorityMatch = priorityFilter === 'ALL' || getPriorityKey(getRowPriority(row)) === priorityFilter;
+      return retailerIdMatch && priorityMatch;
     });
 
     if (sortConfig) {
@@ -366,7 +369,6 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       });
     }
 
-    console.log('Final filteredRetailerRows:', result);
     return result;
   }, [priorityFilter, retailerRows, sortConfig, retailerTableColumns, retailerIdSearch, monthInfo]);
 
@@ -780,6 +782,19 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                     className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
                   />
                 </div>
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <label htmlFor="priority-filter" className="font-semibold text-slate-700">Priority:</label>
+                  <select
+                    id="priority-filter"
+                    value={priorityFilter}
+                    onChange={(event) => setPriorityFilter(event.target.value)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 focus:border-[#245bc1] focus:outline-none"
+                  >
+                    {priorityFilterOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -845,12 +860,18 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                         )}
                       </div>
                     </th>
+                    <th className="px-1 py-2 md:px-4 md:py-3 font-semibold text-center">
+                      <span className="hidden md:inline">Priority</span>
+                      <span className="md:hidden">P</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredRetailerRows.length > 0 ? (
                     filteredRetailerRows.map((row: Record<string, unknown>, index: number) => {
                       const mtdVariance = calculateMtdVariance(row, monthInfo);
+                      const priority = getRowPriority(row);
+                      const priorityKey = getPriorityKey(priority);
 
                       return (
                         <tr key={`${row['retailer_id'] || row['id'] || index}-${index}`} className="hover:bg-slate-50 divide-x divide-slate-100">
@@ -863,12 +884,20 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                             </td>
                           ))}
                           <td className="px-1 py-2 md:px-4 md:py-3 text-slate-700 text-center">{mtdVariance.toLocaleString()}</td>
+                          <td className="px-1 py-2 md:px-4 md:py-3 text-center">
+                            <span
+                              className="inline-flex rounded-full px-2 py-1 text-[9px] font-bold md:text-xs"
+                              style={{ backgroundColor: `${getPriorityColor(priority)}20`, color: getPriorityColor(priority) }}
+                            >
+                              {priorityKey || priority || '—'}
+                            </span>
+                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan={retailerTableColumns.length + 2} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
+                      <td colSpan={retailerTableColumns.length + 3} className="px-4 py-6 text-center text-xs md:text-sm text-slate-500">
                         No retailer details found for this zone.
                       </td>
                     </tr>
