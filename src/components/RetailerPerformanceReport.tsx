@@ -436,9 +436,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       const autoTableModule: any = await import('jspdf-autotable');
       const jsPDF = jsPDFModule.default;
       const autoTable = autoTableModule.default ?? autoTableModule;
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const W = 297;
-      const H = 210;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const W = 210;
+      const H = 297;
       const M = 10;
       const nowStr = new Date().toLocaleString('en-GB');
       const branchLbl = (branch || 'ALL').replace('LMIT-HS-', '') || 'ALL';
@@ -469,7 +469,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         const relevantEntries = monthInfo.filter((entry: MonthInfo) => entry.offset <= -1 && entry.offset >= -3).sort((a, b) => a.offset - b.offset);
         if (relevantEntries.length === 0) return 0;
         const total = relevantEntries.reduce((sum, entry) => sum + fieldValue(row, entry.aliases), 0);
-        return total / relevantEntries.length;
+        return Math.round(total / relevantEntries.length);
       };
 
       pdf.setFillColor(33, 38, 78);
@@ -522,19 +522,19 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         bodyStyles: { textColor: [33, 38, 78], fontSize: 6.8, cellPadding: 1.2 },
         alternateRowStyles: { fillColor: [250, 248, 245] },
         styles: { font: 'helvetica', overflow: 'linebreak', lineColor: [220, 215, 210], lineWidth: 0.15 },
-        tableWidth: 'auto',
+        tableWidth: W - (M * 2),
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 32 },
-          1: { cellWidth: 20 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 20 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 20 },
+          0: { cellWidth: 28 },
+          1: { cellWidth: 16 },
+          2: { cellWidth: 16 },
+          3: { cellWidth: 16 },
+          4: { cellWidth: 16 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 16 },
           7: { cellWidth: 18 },
           8: { cellWidth: 18 },
-          9: { cellWidth: 20 },
+          9: { cellWidth: 18 },
           10: { cellWidth: 18 },
         },
       });
