@@ -51,6 +51,8 @@ interface GAComparisonDataPoint {
   ga_current: number;
   ga_last_month: number;
   ga_past_year: number;
+  ga_last_month_avg_day: number;
+  ga_past_year_avg_day: number;
   ga_target: number;
   ga_current_ach: number;
 }
@@ -254,16 +256,30 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
       // Filter for current month data
       const currentMonthData = isdmRecords.filter(r => r.date === mostRecentDate);
 
+      const currentDate = mostRecentDate ? new Date(mostRecentDate) : new Date();
+      const currentDaysElapsed = Number.isNaN(currentDate.getTime()) ? 1 : currentDate.getDate();
+      const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      const lastMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+      const pastYearDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1);
+      const toComparableMtd = (total: number, comparisonDate: Date) => {
+        const averagePerDay = total / daysInMonth(comparisonDate);
+        return averagePerDay * currentDaysElapsed;
+      };
+
       if (isBranchSelected) {
         setGAComparisonData(
           currentMonthData.map((item) => {
             const current = item.ga_mtd || 0;
             const target = item.ga_tgt || 0;
+            const lastMonth = item.last_month || 0;
+            const pastYear = item.past_year || 0;
             return {
               zone: item.zone || 'N/A',
               ga_current: current,
-              ga_last_month: item.last_month || 0,
-              ga_past_year: item.past_year || 0,
+              ga_last_month: toComparableMtd(lastMonth, lastMonthDate),
+              ga_past_year: toComparableMtd(pastYear, pastYearDate),
+              ga_last_month_avg_day: lastMonth / daysInMonth(lastMonthDate),
+              ga_past_year_avg_day: pastYear / daysInMonth(pastYearDate),
               ga_target: target,
               ga_current_ach: target > 0 ? (current / target) * 100 : 0,
             };
@@ -286,16 +302,20 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
             byBranch.set(key, {
               zone: existing.zone,
               ga_current: existing.ga_current + current,
-              ga_last_month: existing.ga_last_month + lastMonth,
-              ga_past_year: existing.ga_past_year + pastYear,
+              ga_last_month: existing.ga_last_month + toComparableMtd(lastMonth, lastMonthDate),
+              ga_past_year: existing.ga_past_year + toComparableMtd(pastYear, pastYearDate),
+              ga_last_month_avg_day: existing.ga_last_month_avg_day + lastMonth / daysInMonth(lastMonthDate),
+              ga_past_year_avg_day: existing.ga_past_year_avg_day + pastYear / daysInMonth(pastYearDate),
               ga_target: existing.ga_target + target,
             });
           } else {
             byBranch.set(key, {
               zone: label,
               ga_current: current,
-              ga_last_month: lastMonth,
-              ga_past_year: pastYear,
+              ga_last_month: toComparableMtd(lastMonth, lastMonthDate),
+              ga_past_year: toComparableMtd(pastYear, pastYearDate),
+              ga_last_month_avg_day: lastMonth / daysInMonth(lastMonthDate),
+              ga_past_year_avg_day: pastYear / daysInMonth(pastYearDate),
               ga_target: target,
             });
           }
@@ -659,6 +679,8 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
     }),
     { current: 0, lastMonth: 0, pastYear: 0, target: 0 }
   );
+  const monthDifference = gaComparisonTotals.current - gaComparisonTotals.lastMonth;
+  const yearDifference = gaComparisonTotals.current - gaComparisonTotals.pastYear;
 
   return (
     <div className="p-4 md:p-6 bg-gradient-to-br from-[#fff7f2] to-white min-h-[calc(100vh-120px)]">
@@ -800,7 +822,7 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="zone" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => Math.round(value).toString()} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#21264E',
@@ -818,7 +840,7 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
                         </p>
                         {payload.map((entry, index) => (
                           <p key={index} style={{ color: '#ffffff', margin: '4px 0' }}>
-                            {entry.name}: {entry.value}
+                            {entry.name}: {typeof entry.value === 'number' ? Math.round(entry.value) : entry.value}
                           </p>
                         ))}
                       </div>
@@ -1039,6 +1061,7 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
                 <XAxis dataKey="zone" tick={{ fontSize: 12 }} interval={0} angle={-10} textAnchor="end" height={50} />
                 <YAxis
                   tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => Math.round(value).toString()}
                   domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax / 10) * 10)]}
                 />
                 <Tooltip
@@ -1068,6 +1091,11 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
                           )}
                           {payload.map((entry, index) => {
                             const v = typeof entry.value === 'number' ? Math.round(entry.value) : entry.value;
+                            const comparison = p && entry.dataKey === 'ga_last_month'
+                              ? ` (Avg/Day: ${Math.round(p.ga_last_month_avg_day)})`
+                              : p && entry.dataKey === 'ga_past_year'
+                                ? ` (Avg/Day: ${Math.round(p.ga_past_year_avg_day)})`
+                                : '';
                             if (entry.name === 'Current MTD') {
                               return (
                                 <p key={index} style={{ color: '#ffffff', margin: '4px 0' }}>
@@ -1077,7 +1105,7 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
                             }
                             return (
                               <p key={index} style={{ color: '#ffffff', margin: '4px 0' }}>
-                                {entry.name}: {v}
+                                {entry.name}: {v}{comparison}
                               </p>
                             );
                           })}
@@ -1096,19 +1124,19 @@ export default function ISDM({ user, branch, zone, region }: ISDMProps) {
 
             {gaComparisonTotals.current > 0 && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-4 rounded-lg bg-[#fff7f2] border border-gray-100">
+                <div className={`p-4 rounded-lg border ${monthDifference >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                   <p className="text-xs text-gray-500 font-semibold">Month-over-month</p>
-                  <p className="text-sm font-bold text-[#21264E]">
+                  <p className={`text-sm font-bold ${monthDifference >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                     {gaComparisonTotals.lastMonth > 0
-                      ? `${Math.round(gaComparisonTotals.current - gaComparisonTotals.lastMonth)} (${(((gaComparisonTotals.current - gaComparisonTotals.lastMonth) / gaComparisonTotals.lastMonth) * 100).toFixed(1)}%) vs last month`
+                      ? `${monthDifference >= 0 ? '+' : ''}${Math.round(monthDifference)} (${((monthDifference / gaComparisonTotals.lastMonth) * 100).toFixed(1)}%) vs last month`
                       : 'No last month data'}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[#fff7f2] border border-gray-100">
+                <div className={`p-4 rounded-lg border ${yearDifference >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                   <p className="text-xs text-gray-500 font-semibold">Year-over-year</p>
-                  <p className="text-sm font-bold text-[#21264E]">
+                  <p className={`text-sm font-bold ${yearDifference >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                     {gaComparisonTotals.pastYear > 0
-                      ? `${Math.round(gaComparisonTotals.current - gaComparisonTotals.pastYear)} (${(((gaComparisonTotals.current - gaComparisonTotals.pastYear) / gaComparisonTotals.pastYear) * 100).toFixed(1)}%) vs past year`
+                      ? `${yearDifference >= 0 ? '+' : ''}${Math.round(yearDifference)} (${((yearDifference / gaComparisonTotals.pastYear) * 100).toFixed(1)}%) vs past year`
                       : 'No past year data'}
                   </p>
                 </div>
