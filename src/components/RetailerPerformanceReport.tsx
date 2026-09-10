@@ -40,7 +40,7 @@ const PRIORITY_LEVELS: PriorityLevel[] = [
     key: 'p1_count',
     name: 'P1 - CRITICAL LOSS',
     color: '#D32F2F',
-    description: 'TOP RETAILER DROPPING FAST. Immediate escalation to Zone Manager. Manager must visit personally.',
+    description: 'Immediate escalation to Zone Manager. Manager must visit personally. Understand the reason for inactivity (competition, technical issues, closure).',
     timeline: 'Within 24 hours',
   },
   {
@@ -68,14 +68,14 @@ const PRIORITY_LEVELS: PriorityLevel[] = [
     key: 'p5_count',
     name: 'P5 - SPORADIC',
     color: '#FBC02D',
-    description: 'Engagement plan. Provide product training, accompaniment, POP materials, and schedule regular visits.',
+    description: 'Engagement plan. Provide product training, accompaniment, BTL materials, and schedule regular visits.',
     timeline: 'Within 2 weeks',
   },
   {
     key: 'p6_count',
     name: 'P6 - BELOW AVERAGE',
     color: '#7CB342',
-    description: 'Monitoring and support. Push to achieve monthly target with weekly follow-up calls.',
+    description: 'Monitoring and support. Push to achieve monthly target with weekly follow-up calls. Continuous monitoring.',
     timeline: 'Continuous monitoring',
   },
   {
@@ -771,7 +771,12 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {priorityData.map((item: PriorityLevelData) => (
-                <div key={item.key} className="flex items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2">
+                <div
+                  key={item.key}
+                  title={item.description}
+                  aria-label={`${item.name}: ${item.description}`}
+                  className="flex cursor-help items-center justify-between rounded-xl bg-[#f8fafc] px-3 py-2"
+                >
                   <div className="flex items-center gap-2">
                     <span style={{ background: item.color }} className="inline-flex h-3 w-3 rounded-full" />
                     <div>
@@ -800,7 +805,23 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                   <XAxis dataKey="name" angle={-35} textAnchor="end" interval={0} height={75} tick={{ fill: '#334155', fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                  <Legend />
+                  <Legend
+                    content={() => (
+                      <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-3">
+                        {PRIORITY_LEVELS.map((level: PriorityLevel) => (
+                          <span
+                            key={level.key}
+                            title={level.description}
+                            aria-label={`${level.name}: ${level.description}`}
+                            className="inline-flex cursor-help items-center gap-1.5 text-xs text-[#21264E]"
+                          >
+                            <span className="inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: level.color }} />
+                            {level.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  />
                   {PRIORITY_LEVELS.map((level: PriorityLevel) => (
                     <Bar key={level.key} dataKey={level.key} name={level.name} stackId="priority" fill={level.color} />
                   ))}
