@@ -472,6 +472,12 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         return Math.round(total / relevantEntries.length);
       };
 
+      const priorityCounts = PRIORITY_LEVELS.map((level) => ({
+        label: level.key.slice(0, 2).toUpperCase(),
+        color: level.color,
+        count: filteredRetailerRows.reduce((total, row) => total + (getPriorityKey(getRowPriority(row)) === level.key.slice(0, 2).toUpperCase() ? 1 : 0), 0),
+      }));
+
       pdf.setFillColor(33, 38, 78);
       pdf.rect(0, 0, W, 18, 'F');
       pdf.setTextColor(255, 255, 255);
@@ -482,6 +488,34 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Branch: ${branchLbl} | Zone: ${zoneLbl} | Region: ${regionLbl}`, M, 17);
       pdf.text(`Exported: ${nowStr}`, W - M, 17, { align: 'right' });
+
+      const tileGap = 1.5;
+      const tileWidth = (W - (M * 2) - tileGap * (priorityCounts.length - 1)) / priorityCounts.length;
+      const tileY = 23;
+      const tileHeight = 16;
+      pdf.setTextColor(33, 38, 78);
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('PRIORITY SUMMARY', M, tileY - 2);
+      priorityCounts.forEach((priority, index) => {
+        const tileX = M + index * (tileWidth + tileGap);
+        const rgb = toRgb(priority.color);
+        pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(220, 215, 210);
+        pdf.setLineWidth(0.2);
+        pdf.roundedRect(tileX, tileY, tileWidth, tileHeight, 1.5, 1.5, 'FD');
+        pdf.setFillColor(rgb[0], rgb[1], rgb[2]);
+        pdf.roundedRect(tileX, tileY, tileWidth, 3, 1.5, 1.5, 'F');
+        pdf.setTextColor(33, 38, 78);
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(priority.label, tileX + tileWidth / 2, tileY + 8, { align: 'center' });
+        pdf.setFontSize(9);
+        pdf.text(priority.count.toLocaleString(), tileX + tileWidth / 2, tileY + 13, { align: 'center' });
+        pdf.setFontSize(4.2);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('shops', tileX + tileWidth / 2, tileY + 15.2, { align: 'center' });
+      });
 
       autoTable(pdf, {
         head: [[
@@ -516,7 +550,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             },
           ];
         }),
-        startY: 24,
+        startY: tileY + tileHeight + 7,
         theme: 'grid',
         headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center', cellPadding: 1.8 },
         bodyStyles: { textColor: [33, 38, 78], fontSize: 6.8, cellPadding: 1.2 },
@@ -525,17 +559,14 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         tableWidth: W - (M * 2),
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 28 },
-          1: { cellWidth: 16 },
-          2: { cellWidth: 16 },
-          3: { cellWidth: 16 },
-          4: { cellWidth: 16 },
+          0: { cellWidth: 38 },
+          1: { cellWidth: 14 },
+          2: { cellWidth: 14 },
+          3: { cellWidth: 14 },
+          4: { cellWidth: 14 },
           5: { cellWidth: 18 },
           6: { cellWidth: 16 },
-          7: { cellWidth: 18 },
-          8: { cellWidth: 18 },
-          9: { cellWidth: 18 },
-          10: { cellWidth: 18 },
+          7: { cellWidth: 16 },
         },
       });
 
