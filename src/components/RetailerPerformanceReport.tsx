@@ -569,6 +569,25 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
     })),
     [rows],
   );
+  const hierarchyPriorityData = useMemo(() => {
+    if (isZoneSelected) return [];
+
+    if (isRegionSelected && !isBranchSelected) {
+      return branchWiseData.map((row: Record<string, unknown>) => ({
+        name: String(row['zone'] || 'Unknown Branch'),
+        ...Object.fromEntries(PRIORITY_LEVELS.map((level: PriorityLevel) => [level.key, fieldValue(row, [level.key])])),
+      }));
+    }
+
+    if (isBranchSelected) {
+      return rows.map((row: Record<string, unknown>) => ({
+        name: String(row['zone'] || 'Unknown Zone'),
+        ...Object.fromEntries(PRIORITY_LEVELS.map((level: PriorityLevel) => [level.key, fieldValue(row, [level.key])])),
+      }));
+    }
+
+    return [];
+  }, [branchWiseData, isBranchSelected, isRegionSelected, isZoneSelected, rows]);
   const totalPriority = useMemo(
     () => priorityData.reduce((sum: number, item: PriorityLevelData) => sum + item.value, 0),
     [priorityData],
@@ -606,6 +625,7 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
   const comparisonData = [
     { name: '3-month average', value: last3Average, fill: '#08dc7d' },
     { name: 'Current MTD', value: currentMtd, fill: '#245bc1' },
+    { name: 'Projection', value: trendData.find(entry => entry.name.includes('Current MTD'))?.mtdProjection ?? currentMtd, fill: '#46286E' },
   ];
 
   if (!loading && rows.length === 0 && !isZoneSelected) {
@@ -707,7 +727,9 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
                 <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#334155', fontSize: 12 }} />
                 <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Bar dataKey="value" fill="#245bc1" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {comparisonData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -762,6 +784,31 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
             </div>
           </div>
         </section>
+
+        {!isZoneSelected && (isRegionSelected || isBranchSelected) && (
+          <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[#21264E]">
+                {isRegionSelected && !isBranchSelected ? 'Branch-wise Priority Distribution' : 'Zone-wise Priority Distribution'}
+              </h2>
+              <p className="text-sm text-slate-500">Priority status by {isRegionSelected && !isBranchSelected ? 'branch' : 'zone'} for the selected filter set.</p>
+            </div>
+            <div className="h-[380px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={hierarchyPriorityData} margin={{ top: 10, right: 20, left: 0, bottom: 55 }}>
+                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-35} textAnchor="end" interval={0} height={75} tick={{ fill: '#334155', fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                  <Legend />
+                  {PRIORITY_LEVELS.map((level: PriorityLevel) => (
+                    <Bar key={level.key} dataKey={level.key} name={level.name} stackId="priority" fill={level.color} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
 
         {isZoneSelected ? (
           <section className="rounded-3xl border border-[#21264E]/10 bg-white p-5 shadow-sm">
