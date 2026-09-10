@@ -458,6 +458,20 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         pdf.text(`Page ${page} / ${pageCount}`, W - M, H - 6, { align: 'right' });
       };
 
+      const toRgb = (hex: string) => {
+        const cleanHex = hex.replace('#', '');
+        const fullHex = cleanHex.length === 3 ? cleanHex.split('').map((ch) => ch + ch).join('') : cleanHex;
+        const parsed = fullHex.match(/.{1,2}/g)?.map((value) => parseInt(value, 16)) ?? [148, 163, 184];
+        return [parsed[0] ?? 148, parsed[1] ?? 163, parsed[2] ?? 184] as [number, number, number];
+      };
+
+      const getRowThreeMonthAverage = (row: Record<string, unknown>) => {
+        const relevantEntries = monthInfo.filter((entry: MonthInfo) => entry.offset <= -1 && entry.offset >= -3).sort((a, b) => a.offset - b.offset);
+        if (relevantEntries.length === 0) return 0;
+        const total = relevantEntries.reduce((sum, entry) => sum + fieldValue(row, entry.aliases), 0);
+        return total / relevantEntries.length;
+      };
+
       pdf.setFillColor(33, 38, 78);
       pdf.rect(0, 0, W, 18, 'F');
       pdf.setTextColor(255, 255, 255);
@@ -473,28 +487,55 @@ export default function RetailerPerformanceReport({ region, branch, zone, user }
         head: [[
           'Retailer ID',
           ...monthInfo.map((entry: MonthInfo) => entry.label),
+          '3-Month Avg',
           'MTD Var',
+          'Priority',
         ]],
-        body: filteredRetailerRows.map((row: Record<string, unknown>) => [
-          String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? ''),
-          ...monthInfo.map((entry: MonthInfo) => fieldValue(row, entry.aliases).toLocaleString()),
-          calculateMtdVariance(row, monthInfo).toLocaleString(),
-        ]),
+        body: filteredRetailerRows.map((row: Record<string, unknown>) => {
+          const priority = getRowPriority(row);
+          const priorityKey = getPriorityKey(priority) || priority || '—';
+          const priorityColor = getPriorityColor(priority);
+          const priorityRgb = toRgb(priorityColor);
+
+          return [
+            String(row['retailer_id'] ?? row['id'] ?? row['retailer'] ?? ''),
+            ...monthInfo.map((entry: MonthInfo) => fieldValue(row, entry.aliases).toLocaleString()),
+            getRowThreeMonthAverage(row).toLocaleString(),
+            calculateMtdVariance(row, monthInfo).toLocaleString(),
+            {
+              content: priorityKey,
+              styles: {
+                fillColor: priorityRgb,
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle',
+                cellPadding: 1.2,
+                fontSize: 7,
+              },
+            },
+          ];
+        }),
         startY: 24,
         theme: 'grid',
-        headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold' },
-        bodyStyles: { textColor: [33, 38, 78], fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [33, 38, 78], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center', cellPadding: 1.8 },
+        bodyStyles: { textColor: [33, 38, 78], fontSize: 6.8, cellPadding: 1.2 },
         alternateRowStyles: { fillColor: [250, 248, 245] },
-        styles: { font: 'helvetica', overflow: 'linebreak' },
+        styles: { font: 'helvetica', overflow: 'linebreak', lineColor: [220, 215, 210], lineWidth: 0.15 },
         tableWidth: 'auto',
         didDrawPage: footerHook,
         columnStyles: {
-          0: { cellWidth: 55 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 30 },
-          5: { cellWidth: 42 },
+          0: { cellWidth: 32 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 18 },
+          8: { cellWidth: 18 },
+          9: { cellWidth: 20 },
+          10: { cellWidth: 18 },
         },
       });
 
